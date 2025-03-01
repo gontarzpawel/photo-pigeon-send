@@ -1,8 +1,38 @@
-# Welcome to your Lovable project
+
+# Photo Pigeon - Send Photos to Custom HTTP Backends
+
+A responsive web application that allows users to capture photos from their camera or upload photos from their device, then send them to a custom HTTP backend server.
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/53de85d0-92b3-4cbf-b661-c7daaafbf360
+
+## Features
+
+- Take photos using your device's camera
+- Upload photos from your device
+- Preview photos before sending
+- Send photos to a custom HTTP backend
+- Responsive design that works on mobile and desktop
+
+## How to use
+
+1. Enter the URL of your HTTP backend server in the "Server URL" field
+2. Choose between "Upload Photo" and "Take Photo" tabs
+3. Either select a photo from your device or capture one using your camera
+4. Preview the photo
+5. Click "Send Photo" to upload it to your server
+6. The server should accept form data with a field named "photo" containing the image file
+
+## Technical details
+
+The application uses:
+
+- React with TypeScript
+- Tailwind CSS for styling
+- shadcn/ui components
+- Web APIs for camera access
+- FormData for HTTP uploads
 
 ## How can I edit this code?
 
@@ -36,23 +66,9 @@ npm i
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Technologies used
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with .
+This project is built with:
 
 - Vite
 - TypeScript
