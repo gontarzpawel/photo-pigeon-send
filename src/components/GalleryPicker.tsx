@@ -88,6 +88,44 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     }
   };
 
+  // Handler for directory selection
+  const handleDirectorySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
+      let addedCount = 0;
+      
+      files.forEach(file => {
+        const filePath = URL.createObjectURL(file);
+        
+        if (!photoQueue.isFileUploaded(filePath)) {
+          photoQueue.addToQueue(file, serverUrl, 'gallery', filePath);
+          addedCount++;
+        }
+      });
+      
+      // Provide feedback to user
+      if (addedCount > 0) {
+        toast({
+          title: `Auto-detected ${addedCount} new photos from directory`,
+          description: "Starting upload automatically...",
+        });
+        onPhotosSelected(addedCount);
+        
+        // Start uploading automatically
+        photoQueue.startUploadAll();
+      } else {
+        toast({
+          title: "No new photos found in directory",
+          description: "All photos are already uploaded.",
+        });
+      }
+      
+      // Reset for future use
+      e.target.value = '';
+      setIsAutoScanLoading(false);
+    }
+  };
+
   // Automatically scan and upload all unsynced photos without manual selection
   const handleAutoScanAndUpload = async () => {
     setIsAutoScanLoading(true);
@@ -147,6 +185,26 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     }
   };
 
+  // Function to handle directory selection for auto scan
+  const handleChooseDirectoryAndUpload = () => {
+    setIsAutoScanLoading(true);
+    
+    try {
+      // In a real mobile app, this would access specific directories
+      // For web, we use webkitdirectory attribute on input
+      const directoryInput = document.getElementById('gallery-directory-input') as HTMLInputElement;
+      directoryInput?.click();
+    } catch (error) {
+      console.error('Error selecting directory:', error);
+      toast({
+        title: "Error selecting directory",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
+      setIsAutoScanLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Button 
@@ -166,6 +224,15 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
         {isAutoScanLoading ? "Auto-Scanning..." : "Auto-Detect & Upload New Photos"}
       </Button>
       
+      <Button 
+        onClick={handleChooseDirectoryAndUpload} 
+        className="w-full"
+        variant="outline"
+        disabled={isAutoScanLoading}
+      >
+        {isAutoScanLoading ? "Scanning Directory..." : "Choose Directory & Upload"}
+      </Button>
+      
       <Input 
         id="gallery-file-input" 
         type="file" 
@@ -181,6 +248,16 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
         accept="image/*" 
         className="hidden"
         multiple
+      />
+      
+      <Input 
+        id="gallery-directory-input" 
+        type="file" 
+        accept="image/*" 
+        onChange={handleDirectorySelect}
+        className="hidden"
+        multiple
+        webkitdirectory="true"
       />
       
       <p className="text-xs text-gray-500 text-center">
