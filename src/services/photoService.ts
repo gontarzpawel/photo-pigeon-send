@@ -1,4 +1,3 @@
-
 /**
  * Uploads a photo to the specified server with progress tracking
  * @param file The image file to upload
@@ -79,6 +78,8 @@ export interface QueuedPhoto {
   progress: number;
   error?: string;
   timestamp: number;
+  source?: 'camera' | 'gallery' | 'file';
+  originalPath?: string; // Used to track the original file path for mobile devices
 }
 
 // Singleton class to manage photo upload queue
@@ -86,16 +87,58 @@ class PhotoQueueManager {
   private queue: QueuedPhoto[] = [];
   private isUploading = false;
   private onQueueChange: ((queue: QueuedPhoto[]) => void) | null = null;
+  private uploadedFiles: Set<string> = new Set(); // Track uploaded file paths
+  
+  constructor() {
+    // Try to load previously uploaded files from localStorage
+    try {
+      const savedUploads = localStorage.getItem('uploadedFiles');
+      if (savedUploads) {
+        const parsedUploads = JSON.parse(savedUploads);
+        this.uploadedFiles = new Set(parsedUploads);
+      }
+    } catch (error) {
+      console.error('Error loading upload history:', error);
+    }
+  }
+  
+  // Check if a file has been uploaded before
+  isFileUploaded(filePath: string): boolean {
+    return this.uploadedFiles.has(filePath);
+  }
+  
+  // Mark a file as uploaded
+  markFileAsUploaded(filePath: string): void {
+    this.uploadedFiles.add(filePath);
+    this.saveUploadHistory();
+  }
+  
+  // Save upload history to localStorage
+  private saveUploadHistory(): void {
+    try {
+      localStorage.setItem('uploadedFiles', JSON.stringify([...this.uploadedFiles]));
+    } catch (error) {
+      console.error('Error saving upload history:', error);
+    }
+  }
   
   // Add a photo to the upload queue
-  addToQueue(file: File, serverUrl: string): QueuedPhoto {
+  addToQueue(file: File, serverUrl: string, source?: 'camera' | 'gallery' | 'file', originalPath?: string): QueuedPhoto {
+    // If this file has already been uploaded (check by path if available), don't add it
+    if (originalPath && this.isFileUploaded(originalPath)) {
+      console.log(`File ${originalPath} already uploaded, skipping`);
+      return {} as QueuedPhoto; // Return empty object, caller should check if id exists
+    }
+    
     const queueItem: QueuedPhoto = {
       id: crypto.randomUUID ? crypto.randomUUID() : `photo-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       file,
       serverUrl,
       status: 'pending',
       progress: 0,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      source,
+      originalPath
     };
     
     this.queue.push(queueItem);
@@ -163,6 +206,11 @@ class PhotoQueueManager {
         // Update status to completed
         nextItem.status = 'completed';
         nextItem.progress = 100;
+        
+        // Mark file as uploaded if we have the original path
+        if (nextItem.originalPath) {
+          this.markFileAsUploaded(nextItem.originalPath);
+        }
       } catch (error) {
         // Update status to failed
         nextItem.status = 'failed';
@@ -185,6 +233,39 @@ class PhotoQueueManager {
     if (!this.isUploading) {
       this.processQueue();
     }
+  }
+  
+  // Get gallery photos that haven't been uploaded
+  async getUnsyncedGalleryPhotos(serverUrl: string): Promise<QueuedPhoto[]> {
+    try {
+      const newPhotos = await this.loadGalleryPhotos();
+      
+      // Filter out already uploaded photos and add new ones to the queue
+      const unsyncedPhotos: QueuedPhoto[] = [];
+      for (const photo of newPhotos) {
+        if (!this.isFileUploaded(photo.originalPath!)) {
+          const queueItem = this.addToQueue(photo.file, serverUrl, 'gallery', photo.originalPath);
+          if (queueItem.id) { // Check if it's a valid queue item
+            unsyncedPhotos.push(queueItem);
+          }
+        }
+      }
+      
+      return unsyncedPhotos;
+    } catch (error) {
+      console.error('Error loading unsynced photos:', error);
+      return [];
+    }
+  }
+  
+  // Load photos from the device gallery
+  private async loadGalleryPhotos(): Promise<{file: File, originalPath: string}[]> {
+    // For web/development environment, we'll just use a file input
+    // In a real mobile app, we would use Capacitor's FilePicker or similar
+    
+    // This is a placeholder - in a real app we would use native APIs
+    // For now, we'll return an empty array as we can't access the gallery without user interaction
+    return [];
   }
   
   // Notify observers of queue changes

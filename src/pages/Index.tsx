@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import CameraCapture from "@/components/CameraCapture";
 import ImagePreview from "@/components/ImagePreview";
 import UploadQueue from "@/components/UploadQueue";
+import GalleryPicker from "@/components/GalleryPicker";
 import { photoQueue } from "@/services/photoService";
 
 const Index = () => {
@@ -45,6 +46,12 @@ const Index = () => {
     setPreviewUrl(null);
   };
 
+  // Handle photos selected from gallery
+  const handleGalleryPhotosSelected = (count: number) => {
+    // No need to update UI here as photos go directly to queue
+    // But we could show a notification or update some counter
+  };
+
   // Add the photo to the upload queue
   const handleSend = async () => {
     if (!selectedImage) {
@@ -66,7 +73,7 @@ const Index = () => {
     }
 
     // Add to queue instead of uploading immediately
-    photoQueue.addToQueue(selectedImage, serverUrl);
+    photoQueue.addToQueue(selectedImage, serverUrl, 'camera');
     
     toast({
       title: "Photo added to queue",
@@ -96,9 +103,10 @@ const Index = () => {
           </div>
 
           <Tabs defaultValue="upload" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="upload">Upload Photo</TabsTrigger>
-              <TabsTrigger value="camera">Take Photo</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="upload">Upload</TabsTrigger>
+              <TabsTrigger value="camera">Camera</TabsTrigger>
+              <TabsTrigger value="gallery">Gallery</TabsTrigger>
             </TabsList>
             <TabsContent value="upload" className="space-y-4">
               <div className="flex flex-col items-center justify-center">
@@ -120,6 +128,12 @@ const Index = () => {
             </TabsContent>
             <TabsContent value="camera">
               <CameraCapture onCapture={handleCameraCapture} />
+            </TabsContent>
+            <TabsContent value="gallery">
+              <GalleryPicker 
+                serverUrl={serverUrl} 
+                onPhotosSelected={handleGalleryPhotosSelected} 
+              />
             </TabsContent>
           </Tabs>
 
