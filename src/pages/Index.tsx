@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import CameraCapture from "@/components/CameraCapture";
 import ImagePreview from "@/components/ImagePreview";
-import { uploadPhoto } from "@/services/photoService";
+import UploadQueue from "@/components/UploadQueue";
+import { photoQueue } from "@/services/photoService";
 
 const Index = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -44,7 +45,7 @@ const Index = () => {
     setPreviewUrl(null);
   };
 
-  // Send the photo to the backend
+  // Add the photo to the upload queue
   const handleSend = async () => {
     if (!selectedImage) {
       toast({
@@ -64,24 +65,15 @@ const Index = () => {
       return;
     }
 
-    setIsUploading(true);
-    try {
-      await uploadPhoto(selectedImage, serverUrl);
-      toast({
-        title: "Success!",
-        description: "Your photo has been sent successfully.",
-      });
-      handleReset();
-    } catch (error) {
-      console.error("Error uploading photo:", error);
-      toast({
-        title: "Upload failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-    }
+    // Add to queue instead of uploading immediately
+    photoQueue.addToQueue(selectedImage, serverUrl);
+    
+    toast({
+      title: "Photo added to queue",
+      description: "Your photo has been added to the upload queue.",
+    });
+    
+    handleReset();
   };
 
   return (
@@ -148,20 +140,14 @@ const Index = () => {
           <Button 
             onClick={handleSend} 
             disabled={!selectedImage || isUploading}
-            className="relative"
           >
-            {isUploading ? "Sending..." : "Send Photo"}
-            {isUploading && (
-              <span className="absolute inset-0 flex items-center justify-center">
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </span>
-            )}
+            Add to Queue
           </Button>
         </CardFooter>
       </Card>
+      
+      {/* Add the upload queue component */}
+      <UploadQueue />
     </div>
   );
 };
