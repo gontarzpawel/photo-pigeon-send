@@ -12,6 +12,7 @@ interface GalleryPickerProps {
 
 const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isAutoScanLoading, setIsAutoScanLoading] = useState(false);
   const { toast } = useToast();
 
   // Handle file selection from file input (multiple files)
@@ -87,6 +88,65 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     }
   };
 
+  // Automatically scan and upload all unsynced photos without manual selection
+  const handleAutoScanAndUpload = async () => {
+    setIsAutoScanLoading(true);
+    
+    try {
+      // In a mobile app, this would directly access media library
+      // In web, we'll simulate by triggering the file picker
+      const fileInput = document.getElementById('gallery-auto-scan-input') as HTMLInputElement;
+      fileInput?.click();
+      
+      // Add listener for when files are selected
+      fileInput.onchange = (e) => {
+        if (e.target && (e.target as HTMLInputElement).files && (e.target as HTMLInputElement).files!.length > 0) {
+          const files = Array.from((e.target as HTMLInputElement).files!);
+          let addedCount = 0;
+          
+          files.forEach(file => {
+            const filePath = URL.createObjectURL(file);
+            
+            if (!photoQueue.isFileUploaded(filePath)) {
+              photoQueue.addToQueue(file, serverUrl, 'gallery', filePath);
+              addedCount++;
+            }
+          });
+          
+          // Provide feedback to user
+          if (addedCount > 0) {
+            toast({
+              title: `Auto-detected ${addedCount} new photos`,
+              description: "Starting upload automatically...",
+            });
+            onPhotosSelected(addedCount);
+            
+            // Start uploading automatically
+            photoQueue.startUploadAll();
+          } else {
+            toast({
+              title: "No new photos found",
+              description: "All photos are already uploaded.",
+            });
+          }
+          
+          // Reset for future use
+          fileInput.value = '';
+          setIsAutoScanLoading(false);
+        }
+      };
+      
+    } catch (error) {
+      console.error('Error auto-scanning gallery:', error);
+      toast({
+        title: "Error auto-scanning gallery",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
+      setIsAutoScanLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Button 
@@ -95,6 +155,15 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
         disabled={isLoading}
       >
         {isLoading ? "Scanning..." : "Select Photos from Gallery"}
+      </Button>
+      
+      <Button 
+        onClick={handleAutoScanAndUpload} 
+        className="w-full"
+        variant="secondary"
+        disabled={isAutoScanLoading}
+      >
+        {isAutoScanLoading ? "Auto-Scanning..." : "Auto-Detect & Upload New Photos"}
       </Button>
       
       <Input 
@@ -106,8 +175,16 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
         multiple
       />
       
+      <Input 
+        id="gallery-auto-scan-input" 
+        type="file" 
+        accept="image/*" 
+        className="hidden"
+        multiple
+      />
+      
       <p className="text-xs text-gray-500 text-center">
-        Select multiple photos to upload. Only new photos will be added to the queue.
+        Select multiple photos to upload or use auto-detect to find and upload all new photos automatically.
       </p>
     </div>
   );
