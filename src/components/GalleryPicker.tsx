@@ -10,6 +10,14 @@ interface GalleryPickerProps {
   onPhotosSelected: (count: number) => void;
 }
 
+// Extend HTMLInputElement to include webkitdirectory
+declare module 'react' {
+  interface HTMLAttributes<T> extends AriaAttributes, DOMAttributes<T> {
+    // Add webkitdirectory attribute
+    webkitdirectory?: string;
+  }
+}
+
 const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAutoScanLoading, setIsAutoScanLoading] = useState(false);
