@@ -1,22 +1,10 @@
 
 import { useState } from "react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import { useToast } from "@/components/ui/use-toast";
 import { photoQueue } from "@/services/photoService";
-import { useToast } from "./ui/use-toast";
-
-interface GalleryPickerProps {
-  serverUrl: string;
-  onPhotosSelected: (count: number) => void;
-}
-
-// Extend HTMLInputElement to include webkitdirectory
-declare module 'react' {
-  interface HTMLAttributes<T> extends AriaAttributes, DOMAttributes<T> {
-    // Add webkitdirectory attribute
-    webkitdirectory?: string;
-  }
-}
+import GalleryButtons from "./GalleryButtons";
+import GalleryInputs from "./GalleryInputs";
+import { GalleryPickerProps } from "./types";
 
 const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -59,7 +47,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     }
   };
 
-  // Scan gallery and find unsynced photos (this would use native APIs in a real mobile app)
+  // Scan gallery and find unsynced photos
   const handleScanGallery = async () => {
     setIsLoading(true);
     
@@ -67,23 +55,6 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
       // In a real mobile app, this would access the native gallery
       // For now, we'll simulate it by opening the file picker
       document.getElementById('gallery-file-input')?.click();
-      
-      /* This would be the mobile implementation:
-      const unsyncedPhotos = await photoQueue.getUnsyncedGalleryPhotos(serverUrl);
-      
-      if (unsyncedPhotos.length > 0) {
-        toast({
-          title: `Found ${unsyncedPhotos.length} new photos`,
-          description: "Added to upload queue.",
-        });
-        onPhotosSelected(unsyncedPhotos.length);
-      } else {
-        toast({
-          title: "No new photos found",
-          description: "All photos have already been uploaded.",
-        });
-      }
-      */
     } catch (error) {
       console.error('Error scanning gallery:', error);
       toast({
@@ -134,7 +105,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     }
   };
 
-  // Automatically scan and upload all unsynced photos without manual selection
+  // Automatically scan and upload all unsynced photos
   const handleAutoScanAndUpload = async () => {
     setIsAutoScanLoading(true);
     
@@ -215,57 +186,17 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
 
   return (
     <div className="space-y-4">
-      <Button 
-        onClick={handleScanGallery} 
-        className="w-full"
-        disabled={isLoading}
-      >
-        {isLoading ? "Scanning..." : "Select Photos from Gallery"}
-      </Button>
-      
-      <Button 
-        onClick={handleAutoScanAndUpload} 
-        className="w-full"
-        variant="secondary"
-        disabled={isAutoScanLoading}
-      >
-        {isAutoScanLoading ? "Auto-Scanning..." : "Auto-Detect & Upload New Photos"}
-      </Button>
-      
-      <Button 
-        onClick={handleChooseDirectoryAndUpload} 
-        className="w-full"
-        variant="outline"
-        disabled={isAutoScanLoading}
-      >
-        {isAutoScanLoading ? "Scanning Directory..." : "Choose Directory & Upload"}
-      </Button>
-      
-      <Input 
-        id="gallery-file-input" 
-        type="file" 
-        accept="image/*" 
-        onChange={handleFileChange} 
-        className="hidden"
-        multiple
+      <GalleryButtons 
+        isLoading={isLoading}
+        isAutoScanLoading={isAutoScanLoading}
+        onScanGallery={handleScanGallery}
+        onAutoScanAndUpload={handleAutoScanAndUpload}
+        onChooseDirectoryAndUpload={handleChooseDirectoryAndUpload}
       />
       
-      <Input 
-        id="gallery-auto-scan-input" 
-        type="file" 
-        accept="image/*" 
-        className="hidden"
-        multiple
-      />
-      
-      <Input 
-        id="gallery-directory-input" 
-        type="file" 
-        accept="image/*" 
-        onChange={handleDirectorySelect}
-        className="hidden"
-        multiple
-        webkitdirectory="true"
+      <GalleryInputs
+        handleFileChange={handleFileChange}
+        handleDirectorySelect={handleDirectorySelect}
       />
       
       <p className="text-xs text-gray-500 text-center">

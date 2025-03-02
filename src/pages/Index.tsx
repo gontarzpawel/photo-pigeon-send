@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import CameraCapture from "@/components/CameraCapture";
 import ImagePreview from "@/components/ImagePreview";
 import UploadQueue from "@/components/UploadQueue";
-import GalleryPicker from "@/components/GalleryPicker";
+import GalleryPicker from "@/components/gallery-picker";
 import { photoQueue } from "@/services/photoService";
 
 const Index = () => {
