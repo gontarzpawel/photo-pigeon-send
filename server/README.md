@@ -1,7 +1,7 @@
 
-# Image Upload Server
+# Image Upload Server (Go Version)
 
-A simple backend server that handles image uploads, extracts image metadata, organizes files by capture date, and prevents duplicate uploads.
+A backend server written in Go that handles image uploads, extracts image metadata, organizes files by capture date, and prevents duplicate uploads.
 
 ## Features
 
@@ -13,22 +13,32 @@ A simple backend server that handles image uploads, extracts image metadata, org
 
 ## Setup
 
-1. Install dependencies:
+### Using Go directly
+
+1. Install Go (version 1.18 or later recommended)
+2. Install dependencies:
    ```
-   npm install
+   go mod download
    ```
 
-2. Start the server:
+3. Run the server:
    ```
-   npm start
-   ```
-   
-   For development with auto-restart:
-   ```
-   npm run dev
+   go run main.go
    ```
 
-3. The server will run on port 3001 by default (configurable via PORT environment variable)
+### Using Docker
+
+1. Build the Docker image:
+   ```
+   docker build -t image-upload-server .
+   ```
+
+2. Run the container:
+   ```
+   docker run -p 3001:3001 -v $(pwd)/uploads:/app/uploads image-upload-server
+   ```
+
+The server will run on port 3001 by default.
 
 ## API Endpoints
 
@@ -45,7 +55,7 @@ Upload an image file.
 - 201 Created: Image uploaded successfully
   ```json
   {
-    "success": true,
+    "success": true, 
     "message": "Image uploaded successfully",
     "path": "/2023/04/15/1681568943783-a1b2c3d4.jpg",
     "date": "2023-04-15T12:34:56.000Z"
