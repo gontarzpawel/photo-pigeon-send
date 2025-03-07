@@ -11,6 +11,9 @@ import ImagePreview from "@/components/ImagePreview";
 import UploadQueue from "@/components/UploadQueue";
 import GalleryPicker from "@/components/gallery-picker";
 import { photoQueue } from "@/services/photoService";
+import { authService } from "@/services/authService";
+import LoginForm from "@/components/LoginForm";
+import { toast } from "sonner";
 
 // Function to validate URL
 const isValidUrl = (string: string): boolean => {
@@ -28,7 +31,14 @@ const Index = () => {
   const [serverUrl, setServerUrl] = useState<string>("");
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [urlError, setUrlError] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [showLoginForm, setShowLoginForm] = useState<boolean>(false);
+  const { toast: uiToast } = useToast();
+
+  // Check auth status on load
+  useEffect(() => {
+    setIsAuthenticated(authService.isLoggedIn());
+  }, []);
 
   // Validate URL when it changes
   useEffect(() => {
@@ -51,12 +61,12 @@ const Index = () => {
       // Provide toast notifications for status changes
       if (latestItem && latestItem._lastStatus !== latestItem.status) {
         if (latestItem.status === 'completed') {
-          toast({
+          uiToast({
             title: "Upload successful",
             description: `${latestItem.file.name} has been uploaded successfully.`,
           });
         } else if (latestItem.status === 'failed') {
-          toast({
+          uiToast({
             title: "Upload failed",
             description: latestItem.error || "There was an error uploading the file.",
             variant: "destructive",
@@ -73,7 +83,7 @@ const Index = () => {
     return () => {
       photoQueue.setOnQueueChange(null);
     };
-  }, [toast]);
+  }, [uiToast]);
 
   // Handle file selection from file input
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,7 +121,7 @@ const Index = () => {
   // Add the photo to the upload queue
   const handleSend = async () => {
     if (!selectedImage) {
-      toast({
+      uiToast({
         title: "No image selected",
         description: "Please select or capture an image first.",
         variant: "destructive",
@@ -120,7 +130,7 @@ const Index = () => {
     }
 
     if (!serverUrl) {
-      toast({
+      uiToast({
         title: "Server URL required",
         description: "Please enter the URL of the server to send the image to.",
         variant: "destructive",
@@ -129,7 +139,7 @@ const Index = () => {
     }
 
     if (urlError) {
-      toast({
+      uiToast({
         title: "Invalid URL",
         description: urlError,
         variant: "destructive",
@@ -137,10 +147,15 @@ const Index = () => {
       return;
     }
 
+    if (!isAuthenticated) {
+      setShowLoginForm(true);
+      return;
+    }
+
     // Add to queue instead of uploading immediately
     photoQueue.addToQueue(selectedImage, serverUrl, 'camera');
     
-    toast({
+    uiToast({
       title: "Photo added to queue",
       description: "Your photo has been added to the upload queue.",
     });
@@ -148,85 +163,123 @@ const Index = () => {
     handleReset();
   };
 
+  // Handle login success
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+    setShowLoginForm(false);
+    
+    // If there was a pending upload, process it now
+    if (selectedImage) {
+      photoQueue.addToQueue(selectedImage, serverUrl, 'camera');
+      toast.success("Photo added to queue");
+      handleReset();
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    authService.logout();
+    setIsAuthenticated(false);
+    toast.info("You have been logged out");
+  };
+
   return (
     <div className="container max-w-md mx-auto px-4 py-8">
-      <Card className="w-full">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Photo Pigeon</CardTitle>
-          <CardDescription>Capture and send photos to your server</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4">
-            <Label htmlFor="server-url">Server URL</Label>
-            <Input
-              id="server-url"
-              placeholder="https://your-server.com/api/upload"
-              value={serverUrl}
-              onChange={(e) => setServerUrl(e.target.value)}
-              className={`mb-1 ${urlError ? 'border-red-500' : ''}`}
-            />
-            {urlError && (
-              <p className="text-xs text-red-500 mt-1">{urlError}</p>
-            )}
-          </div>
-
-          <Tabs defaultValue="upload" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="upload">Upload</TabsTrigger>
-              <TabsTrigger value="camera">Camera</TabsTrigger>
-              <TabsTrigger value="gallery">Gallery</TabsTrigger>
-            </TabsList>
-            <TabsContent value="upload" className="space-y-4">
-              <div className="flex flex-col items-center justify-center">
-                <Label htmlFor="photo-upload" className="cursor-pointer">
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary transition-colors">
-                    <p className="text-sm text-gray-500">
-                      Click to select a photo, or drag and drop
-                    </p>
-                  </div>
-                </Label>
-                <Input 
-                  id="photo-upload" 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleFileChange} 
-                  className="hidden"
-                />
+      {showLoginForm ? (
+        <LoginForm 
+          serverUrl={serverUrl} 
+          onLoginSuccess={handleLoginSuccess}
+        />
+      ) : (
+        <Card className="w-full">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold">Photo Pigeon</CardTitle>
+            <CardDescription>Capture and send photos to your server</CardDescription>
+            {isAuthenticated && (
+              <div className="flex justify-end mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleLogout}
+                >
+                  Logout
+                </Button>
               </div>
-            </TabsContent>
-            <TabsContent value="camera">
-              <CameraCapture onCapture={handleCameraCapture} />
-            </TabsContent>
-            <TabsContent value="gallery">
-              <GalleryPicker 
-                serverUrl={serverUrl} 
-                onPhotosSelected={handleGalleryPhotosSelected} 
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4">
+              <Label htmlFor="server-url">Server URL</Label>
+              <Input
+                id="server-url"
+                placeholder="https://your-server.com/api"
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
+                className={`mb-1 ${urlError ? 'border-red-500' : ''}`}
               />
-            </TabsContent>
-          </Tabs>
-
-          {previewUrl && (
-            <div className="mt-4">
-              <ImagePreview imageUrl={previewUrl} />
+              {urlError && (
+                <p className="text-xs text-red-500 mt-1">{urlError}</p>
+              )}
             </div>
-          )}
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button 
-            variant="outline" 
-            onClick={handleReset}
-            disabled={!selectedImage || isUploading}
-          >
-            Reset
-          </Button>
-          <Button 
-            onClick={handleSend} 
-            disabled={!selectedImage || isUploading || (serverUrl && !!urlError)}
-          >
-            Add to Queue
-          </Button>
-        </CardFooter>
-      </Card>
+
+            <Tabs defaultValue="upload" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="upload">Upload</TabsTrigger>
+                <TabsTrigger value="camera">Camera</TabsTrigger>
+                <TabsTrigger value="gallery">Gallery</TabsTrigger>
+              </TabsList>
+              <TabsContent value="upload" className="space-y-4">
+                <div className="flex flex-col items-center justify-center">
+                  <Label htmlFor="photo-upload" className="cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary transition-colors">
+                      <p className="text-sm text-gray-500">
+                        Click to select a photo, or drag and drop
+                      </p>
+                    </div>
+                  </Label>
+                  <Input 
+                    id="photo-upload" 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleFileChange} 
+                    className="hidden"
+                  />
+                </div>
+              </TabsContent>
+              <TabsContent value="camera">
+                <CameraCapture onCapture={handleCameraCapture} />
+              </TabsContent>
+              <TabsContent value="gallery">
+                <GalleryPicker 
+                  serverUrl={serverUrl} 
+                  onPhotosSelected={handleGalleryPhotosSelected} 
+                />
+              </TabsContent>
+            </Tabs>
+
+            {previewUrl && (
+              <div className="mt-4">
+                <ImagePreview imageUrl={previewUrl} />
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            <Button 
+              variant="outline" 
+              onClick={handleReset}
+              disabled={!selectedImage || isUploading}
+            >
+              Reset
+            </Button>
+            <Button 
+              onClick={handleSend} 
+              disabled={!selectedImage || isUploading || (serverUrl && !!urlError)}
+            >
+              {isAuthenticated ? "Add to Queue" : "Login & Upload"}
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
       
       {/* Add the upload queue component */}
       <UploadQueue />

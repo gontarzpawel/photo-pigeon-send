@@ -2,11 +2,12 @@
 {
   "name": "image-upload-server",
   "version": "1.0.0",
-  "description": "Backend server for handling image uploads",
+  "description": "Backend server for handling image uploads with authentication",
   "main": "main.go",
   "scripts": {
     "start": "go run main.go",
     "dev": "go run main.go",
-    "build": "go build -o image-server"
+    "build": "go build -o image-server",
+    "test": "go test -v"
   }
 }

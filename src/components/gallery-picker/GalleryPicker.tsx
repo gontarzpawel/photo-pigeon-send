@@ -2,9 +2,11 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { photoQueue } from "@/services/photoService";
+import { authService } from "@/services/authService";
 import GalleryButtons from "./GalleryButtons";
 import GalleryInputs from "./GalleryInputs";
 import { GalleryPickerProps } from "./types";
+import LoginForm from "../LoginForm";
 
 // Function to validate URL
 const isValidUrl = (string: string): boolean => {
@@ -19,7 +21,11 @@ const isValidUrl = (string: string): boolean => {
 const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAutoScanLoading, setIsAutoScanLoading] = useState(false);
+  const [showLoginForm, setShowLoginForm] = useState(false);
   const { toast } = useToast();
+  
+  // Check if the user is authenticated
+  const isAuthenticated = authService.isLoggedIn();
 
   // Validate server URL before proceeding
   const validateServerUrl = (): boolean => {
@@ -44,9 +50,18 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     return true;
   };
 
+  // Check authentication before proceeding
+  const checkAuthBeforeProceeding = (): boolean => {
+    if (!isAuthenticated) {
+      setShowLoginForm(true);
+      return false;
+    }
+    return true;
+  };
+
   // Handle file selection from file input (multiple files)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!validateServerUrl()) {
+    if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
       e.target.value = '';
       return;
     }
@@ -87,7 +102,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
 
   // Scan gallery and find unsynced photos
   const handleScanGallery = async () => {
-    if (!validateServerUrl()) return;
+    if (!validateServerUrl() || !checkAuthBeforeProceeding()) return;
     
     setIsLoading(true);
     
@@ -109,7 +124,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
 
   // Handler for directory selection
   const handleDirectorySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!validateServerUrl()) {
+    if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
       e.target.value = '';
       return;
     }
@@ -152,7 +167,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
 
   // Automatically scan and upload all unsynced photos
   const handleAutoScanAndUpload = async () => {
-    if (!validateServerUrl()) return;
+    if (!validateServerUrl() || !checkAuthBeforeProceeding()) return;
     
     setIsAutoScanLoading(true);
     
@@ -213,7 +228,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
 
   // Function to handle directory selection for auto scan
   const handleChooseDirectoryAndUpload = () => {
-    if (!validateServerUrl()) return;
+    if (!validateServerUrl() || !checkAuthBeforeProceeding()) return;
     
     setIsAutoScanLoading(true);
     
@@ -232,6 +247,20 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
       setIsAutoScanLoading(false);
     }
   };
+
+  // Handle login success
+  const handleLoginSuccess = () => {
+    setShowLoginForm(false);
+  };
+
+  if (showLoginForm) {
+    return (
+      <LoginForm 
+        serverUrl={serverUrl}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4">

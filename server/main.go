@@ -19,18 +19,40 @@ import (
 	"github.com/dsoprea/go-jpeg-image-structure/v2"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // Global map to store file hashes for duplicate detection
 var (
 	uploadedHashes = make(map[string]string)
 	hashMutex      sync.Mutex
+	jwtSecret      = getEnvOrDefault("JWT_SECRET", "your-secret-key-change-in-production")
+	authUsers      = map[string]string{
+		"admin": "password123", // Default user - CHANGE IN PRODUCTION
+	}
 )
 
 const (
 	uploadsDir = "./uploads"
 	port       = ":3001"
 )
+
+// User represents the user model
+type User struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// LoginResponse represents the response after successful login
+type LoginResponse struct {
+	Token string `json:"token"`
+}
+
+// JWTClaims represents the claims in the JWT token
+type JWTClaims struct {
+	Username string `json:"username"`
+	jwt.RegisteredClaims
+}
 
 func main() {
 	// Ensure uploads directory exists
@@ -47,20 +69,135 @@ func main() {
 	// Configure CORS
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"POST", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type"},
+		AllowMethods:     []string{"POST", "GET", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Upload endpoint
-	router.POST("/upload", handleUpload)
+	// Public routes
+	router.POST("/login", handleLogin)
+
+	// Protected routes
+	authorized := router.Group("/")
+	authorized.Use(authMiddleware())
+	{
+		authorized.POST("/upload", handleUpload)
+	}
 
 	// Start the server
 	log.Printf("Server running on port%s", port)
 	if err := router.Run(port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
+	}
+}
+
+// getEnvOrDefault gets environment variable or returns default if not set
+func getEnvOrDefault(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
+// handleLogin authenticates a user and returns a JWT token
+func handleLogin(c *gin.Context) {
+	var user User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	// Check if user exists and password is correct
+	storedPassword, exists := authUsers[user.Username]
+	if !exists || storedPassword != user.Password {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	// Create token
+	token, err := generateJWT(user.Username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, LoginResponse{Token: token})
+}
+
+// generateJWT creates a new JWT token for the given username
+func generateJWT(username string) (string, error) {
+	// Set expiration time for the token
+	expirationTime := time.Now().Add(24 * time.Hour)
+
+	// Create claims with user data
+	claims := &JWTClaims{
+		Username: username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	// Create token with claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Sign the token with the secret key
+	tokenString, err := token.SignedString([]byte(jwtSecret))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
+// authMiddleware returns a middleware for authenticating JWT tokens
+func authMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get the Authorization header
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
+			return
+		}
+
+		// Check if the header format is valid
+		headerParts := strings.Split(authHeader, " ")
+		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
+			return
+		}
+
+		// Get the token
+		tokenString := headerParts[1]
+
+		// Parse and validate the token
+		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+			// Validate signing method
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return []byte(jwtSecret), nil
+		})
+
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			return
+		}
+
+		// Check if the token is valid
+		if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
+			// Add claims to the context for other handlers to use
+			c.Set("username", claims.Username)
+		} else {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			return
+		}
+
+		c.Next()
 	}
 }
 
@@ -140,12 +277,16 @@ func handleUpload(c *gin.Context) {
 	uploadedHashes[hash] = relativePath
 	hashMutex.Unlock()
 
+	// Get username from context (set by authMiddleware)
+	username, _ := c.Get("username")
+
 	// Return success response
 	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"message": "Image uploaded successfully",
-		"path":    relativePath,
-		"date":    imageDate,
+		"success":  true,
+		"message":  "Image uploaded successfully",
+		"path":     relativePath,
+		"date":     imageDate,
+		"uploader": username,
 	})
 }
 
