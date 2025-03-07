@@ -1,18 +1,56 @@
 
 import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { photoQueue } from "@/services/photoService";
 import GalleryButtons from "./GalleryButtons";
 import GalleryInputs from "./GalleryInputs";
 import { GalleryPickerProps } from "./types";
+
+// Function to validate URL
+const isValidUrl = (string: string): boolean => {
+  try {
+    const url = new URL(string);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch (_) {
+    return false;
+  }
+};
 
 const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAutoScanLoading, setIsAutoScanLoading] = useState(false);
   const { toast } = useToast();
 
+  // Validate server URL before proceeding
+  const validateServerUrl = (): boolean => {
+    if (!serverUrl) {
+      toast({
+        title: "Server URL required",
+        description: "Please enter the URL of the server to send images to.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    if (!isValidUrl(serverUrl)) {
+      toast({
+        title: "Invalid URL",
+        description: "Please enter a valid URL starting with http:// or https://",
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    return true;
+  };
+
   // Handle file selection from file input (multiple files)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!validateServerUrl()) {
+      e.target.value = '';
+      return;
+    }
+  
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
       let addedCount = 0;
@@ -49,6 +87,8 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
 
   // Scan gallery and find unsynced photos
   const handleScanGallery = async () => {
+    if (!validateServerUrl()) return;
+    
     setIsLoading(true);
     
     try {
@@ -69,6 +109,11 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
 
   // Handler for directory selection
   const handleDirectorySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!validateServerUrl()) {
+      e.target.value = '';
+      return;
+    }
+    
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
       let addedCount = 0;
@@ -107,6 +152,8 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
 
   // Automatically scan and upload all unsynced photos
   const handleAutoScanAndUpload = async () => {
+    if (!validateServerUrl()) return;
+    
     setIsAutoScanLoading(true);
     
     try {
@@ -166,6 +213,8 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
 
   // Function to handle directory selection for auto scan
   const handleChooseDirectoryAndUpload = () => {
+    if (!validateServerUrl()) return;
+    
     setIsAutoScanLoading(true);
     
     try {

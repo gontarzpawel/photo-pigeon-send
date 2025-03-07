@@ -1,3 +1,4 @@
+
 /**
  * Uploads a photo to the specified server with progress tracking
  * @param file The image file to upload
@@ -80,7 +81,18 @@ export interface QueuedPhoto {
   timestamp: number;
   source?: 'camera' | 'gallery' | 'file';
   originalPath?: string; // Used to track the original file path for mobile devices
+  _lastStatus?: string; // Internal field to track last status for UI notifications
 }
+
+// Function to validate URL
+const isValidUrl = (string: string): boolean => {
+  try {
+    const url = new URL(string);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch (_) {
+    return false;
+  }
+};
 
 // Singleton class to manage photo upload queue
 class PhotoQueueManager {
@@ -124,10 +136,45 @@ class PhotoQueueManager {
   
   // Add a photo to the upload queue
   addToQueue(file: File, serverUrl: string, source?: 'camera' | 'gallery' | 'file', originalPath?: string): QueuedPhoto {
+    // Validate the server URL
+    if (!serverUrl || !isValidUrl(serverUrl)) {
+      const errorItem: QueuedPhoto = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `photo-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        file,
+        serverUrl,
+        status: 'failed',
+        progress: 0,
+        error: 'Invalid server URL',
+        timestamp: Date.now(),
+        source,
+        originalPath
+      };
+      
+      this.queue.unshift(errorItem);
+      this.notifyQueueChange();
+      
+      return errorItem;
+    }
+    
     // If this file has already been uploaded (check by path if available), don't add it
     if (originalPath && this.isFileUploaded(originalPath)) {
       console.log(`File ${originalPath} already uploaded, skipping`);
-      return {} as QueuedPhoto; // Return empty object, caller should check if id exists
+      
+      // Create a dummy item to indicate the file was skipped
+      const skippedItem: QueuedPhoto = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `photo-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        file,
+        serverUrl,
+        status: 'failed',
+        progress: 0,
+        error: 'File already uploaded',
+        timestamp: Date.now(),
+        source,
+        originalPath
+      };
+      
+      // Don't add to queue, but return for reference
+      return skippedItem;
     }
     
     const queueItem: QueuedPhoto = {
@@ -141,7 +188,8 @@ class PhotoQueueManager {
       originalPath
     };
     
-    this.queue.push(queueItem);
+    // Add at the beginning of the queue for better visibility
+    this.queue.unshift(queueItem);
     this.notifyQueueChange();
     
     // Start processing queue if not already running
@@ -154,6 +202,15 @@ class PhotoQueueManager {
   
   // Remove a photo from the queue
   removeFromQueue(id: string): void {
+    const itemToRemove = this.queue.find(item => item.id === id);
+    if (itemToRemove && itemToRemove.status === 'uploading') {
+      // In a real implementation, we would want to cancel the in-progress XHR
+      // For now, just mark it as failed
+      itemToRemove.status = 'failed';
+      itemToRemove.error = 'Upload cancelled by user';
+      this.notifyQueueChange();
+    }
+    
     this.queue = this.queue.filter(item => item.id !== id);
     this.notifyQueueChange();
   }
@@ -172,7 +229,7 @@ class PhotoQueueManager {
   }
   
   // Set callback for queue changes
-  setOnQueueChange(callback: (queue: QueuedPhoto[]) => void): void {
+  setOnQueueChange(callback: ((queue: QueuedPhoto[]) => void) | null): void {
     this.onQueueChange = callback;
   }
   
