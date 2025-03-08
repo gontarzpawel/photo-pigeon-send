@@ -15,8 +15,19 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
+	
+	"image-upload-server/auth"
+	"image-upload-server/config"
+	"image-upload-server/filehandler"
+	"image-upload-server/middleware"
 )
+
+// Initialize configuration for testing
+func init() {
+	config.Init()
+}
 
 // setupTestRouter sets up a test router with our handlers
 func setupTestRouter() *gin.Engine {
@@ -24,13 +35,13 @@ func setupTestRouter() *gin.Engine {
 	r := gin.Default()
 	
 	// Public routes
-	r.POST("/login", handleLogin)
+	r.POST("/login", auth.HandleLogin)
 	
 	// Protected routes
 	authorized := r.Group("/")
-	authorized.Use(authMiddleware())
+	authorized.Use(middleware.AuthMiddleware())
 	{
-		authorized.POST("/upload", handleUpload)
+		authorized.POST("/upload", filehandler.HandleUpload)
 	}
 	
 	return r
@@ -91,7 +102,7 @@ func TestLoginSuccess(t *testing.T) {
 	router := setupTestRouter()
 	
 	// Create login request
-	loginData := User{
+	loginData := auth.User{
 		Username: "admin",
 		Password: "password123",
 	}
@@ -108,7 +119,7 @@ func TestLoginSuccess(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	
 	// Verify we got a token back
-	var response LoginResponse
+	var response auth.LoginResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, response.Token)
@@ -119,7 +130,7 @@ func TestLoginFailure(t *testing.T) {
 	router := setupTestRouter()
 	
 	// Create login request with wrong password
-	loginData := User{
+	loginData := auth.User{
 		Username: "admin",
 		Password: "wrongpassword",
 	}
@@ -163,7 +174,7 @@ func TestAuthorizedUpload(t *testing.T) {
 	router := setupTestRouter()
 	
 	// First, get a valid token
-	loginData := User{
+	loginData := auth.User{
 		Username: "admin",
 		Password: "password123",
 	}
@@ -175,16 +186,16 @@ func TestAuthorizedUpload(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, loginReq)
 	
-	var loginResponse LoginResponse
+	var loginResponse auth.LoginResponse
 	json.Unmarshal(w.Body.Bytes(), &loginResponse)
 	token := loginResponse.Token
 	
 	// Create a test upload directory
 	testUploadsDir := "./test_uploads"
-	originalUploadsDir := uploadsDir
-	uploadsDir = testUploadsDir
+	originalUploadsDir := config.UploadsDir
+	config.UploadsDir = testUploadsDir
 	defer func() {
-		uploadsDir = originalUploadsDir
+		config.UploadsDir = originalUploadsDir
 		os.RemoveAll(testUploadsDir)
 	}()
 	
@@ -205,7 +216,7 @@ func TestAuthorizedUpload(t *testing.T) {
 	
 	// Perform upload request
 	uploadW := httptest.NewRecorder()
-	router.ServeHTTP(uploadW, uploadReq)
+	router.ServeHTTP(w, uploadReq)
 	
 	// Assert response
 	assert.Equal(t, http.StatusCreated, uploadW.Code)
@@ -220,7 +231,7 @@ func TestAuthorizedUpload(t *testing.T) {
 func TestCalculateHash(t *testing.T) {
 	// Test with known data
 	data := []byte("test data for hashing")
-	hash := calculateHash(data)
+	hash := filehandler.CalculateHash(data)
 	
 	// Verify hash is not empty and has the correct format (hex sha256)
 	assert.NotEmpty(t, hash)
@@ -230,20 +241,20 @@ func TestCalculateHash(t *testing.T) {
 // TestGenerateJWT tests JWT token generation
 func TestGenerateJWT(t *testing.T) {
 	username := "testuser"
-	token, err := generateJWT(username)
+	token, err := auth.GenerateJWT(username)
 	
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 	
 	// Parse the token to verify it contains the correct claims
-	parsedToken, err := jwt.ParseWithClaims(token, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(jwtSecret), nil
+	parsedToken, err := jwt.ParseWithClaims(token, &auth.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(config.JWTSecret), nil
 	})
 	
 	assert.NoError(t, err)
 	assert.True(t, parsedToken.Valid)
 	
-	claims, ok := parsedToken.Claims.(*JWTClaims)
+	claims, ok := parsedToken.Claims.(*auth.JWTClaims)
 	assert.True(t, ok)
 	assert.Equal(t, username, claims.Username)
 }
