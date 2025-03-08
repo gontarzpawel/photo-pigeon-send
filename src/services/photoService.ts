@@ -15,6 +15,9 @@ export interface QueueItem {
   _lastStatus?: string; // To track status changes
 }
 
+// For backward compatibility - alias QueueItem as QueuedPhoto
+export type QueuedPhoto = QueueItem;
+
 // Photo queue manager class
 class PhotoQueueManager {
   private queue: QueueItem[] = [];
@@ -112,7 +115,7 @@ class PhotoQueueManager {
 
   // Clear completed uploads from the queue
   clearCompleted(): void {
-    this.queue = this.queue.filter(item => item.status !== 'completed');
+    this.queue = this.queue.filter(item => item.status !== 'completed' && item.status !== 'failed');
     this.notifyQueueChange();
   }
 

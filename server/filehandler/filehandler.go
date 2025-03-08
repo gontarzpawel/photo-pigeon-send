@@ -125,7 +125,7 @@ func CalculateHash(data []byte) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-// Load existing file hashes to prevent duplicate uploads
+// LoadExistingHashes loads existing file hashes to prevent duplicate uploads
 func LoadExistingHashes() {
 	// Walk through all files in the uploads directory
 	err := filepath.Walk(config.UploadsDir, func(path string, info os.FileInfo, err error) error {
