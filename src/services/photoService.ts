@@ -110,6 +110,12 @@ class PhotoQueueManager {
     return [...this.queue];
   }
 
+  // Clear completed uploads from the queue
+  clearCompleted(): void {
+    this.queue = this.queue.filter(item => item.status !== 'completed');
+    this.notifyQueueChange();
+  }
+
   // Upload a single item
   private async uploadItem(item: QueueItem): Promise<void> {
     // Update status to uploading
