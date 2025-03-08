@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/dsoprea/go-exif/v3"
-	"github.com/dsoprea/go-exif/v3/common"
+	exifcommon "github.com/dsoprea/go-exif/v3/common"
 	"github.com/dsoprea/go-jpeg-image-structure/v2"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -306,35 +306,48 @@ func extractImageDate(jpegData []byte) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	// Extract EXIF data
-	sl, err := intfc.(*jpegstructure.SegmentList).GetExif()
+	// Extract EXIF data - Fix for the first error
+	segmentList := intfc.(*jpegstructure.SegmentList)
+	exifSegment, err := segmentList.FindExif()
 	if err != nil {
 		return time.Time{}, err
 	}
 
-	im, err := sl.ConstructExifBuilder()
+	exifData, err := exifSegment.MarkingSegment.Data()
 	if err != nil {
 		return time.Time{}, err
 	}
 
-	// Look for DateTimeOriginal tag
-	rootIb, err := im.RootIfd()
+	// Parse EXIF data
+	im, err := exif.NewIfdMappingWithStandard()
 	if err != nil {
 		return time.Time{}, err
 	}
 
-	// Try to get DateTimeOriginal from Exif IFD
-	exifIfd, err := rootIb.ChildWithIfdPath(exifcommon.IfdPathStandardExif)
+	ti := exif.NewTagIndex()
+	_, index, err := exif.Collect(im, ti, exifData)
 	if err != nil {
 		return time.Time{}, err
 	}
 
-	dateTimeOriginalTag, err := exifIfd.FindTagWithName("DateTimeOriginal")
+	// Try to find DateTimeOriginal tag - Fix for the second error
+	ifd, err := index.RootIfd.ChildWithIfdPath(exifcommon.IfdStandardExifPath)
 	if err != nil {
 		return time.Time{}, err
 	}
 
-	dateTimeValue, err := dateTimeOriginalTag.Value()
+	results, err := ifd.FindTagWithName("DateTimeOriginal")
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	if len(results) == 0 {
+		return time.Time{}, fmt.Errorf("DateTimeOriginal tag not found")
+	}
+
+	// Get the date time string
+	dateTimeTag := results[0]
+	dateTimeValue, err := dateTimeTag.Value()
 	if err != nil {
 		return time.Time{}, err
 	}
