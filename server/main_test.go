@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -22,11 +21,23 @@ import (
 	"image-upload-server/config"
 	"image-upload-server/filehandler"
 	"image-upload-server/middleware"
+	"image-upload-server/testutil"
+	"image-upload-server/exif"
 )
 
 // Initialize configuration for testing
 func init() {
 	config.Init()
+}
+
+// Initialize and add test images for EXIF testing
+func setupTestImages(t *testing.T) {
+	testutil.SetupTestImages(t)
+}
+
+// cleanupTestImages removes test images after tests
+func cleanupTestImages(t *testing.T) {
+	testutil.CleanupTestImages(t)
 }
 
 // setupTestRouter sets up a test router with our handlers
@@ -257,4 +268,35 @@ func TestGenerateJWT(t *testing.T) {
 	claims, ok := parsedToken.Claims.(*auth.JWTClaims)
 	assert.True(t, ok)
 	assert.Equal(t, username, claims.Username)
+}
+
+// TestExifExtraction tests the EXIF extraction functionality
+func TestExifExtraction(t *testing.T) {
+	// Setup test images
+	setupTestImages(t)
+	defer cleanupTestImages(t)
+	
+	// Create a test image without EXIF data
+	imageData, err := createTestImage(t)
+	assert.NoError(t, err)
+	
+	// Test EXIF extraction (should fail for our test image with no EXIF)
+	_, err = exif.ExtractImageDate(imageData)
+	assert.Error(t, err, "Should return error when extracting date from image without EXIF")
+	
+	// Test with real image if environment variable is set
+	if os.Getenv("TEST_WITH_REAL_IMAGE") == "1" {
+		testutil.CheckTestImageExists(t, testutil.WithExifImagePath, 
+			"Real image test skipped: test image not found")
+		
+		realImageData, err := os.ReadFile(testutil.WithExifImagePath)
+		if err != nil {
+			t.Skip("Failed to read real test image:", err)
+		}
+		
+		date, err := exif.ExtractImageDate(realImageData)
+		assert.NoError(t, err, "Should extract date from real image with EXIF")
+		assert.False(t, date.IsZero(), "Extracted date should not be zero")
+		t.Logf("Successfully extracted date from real image: %v", date)
+	}
 }
