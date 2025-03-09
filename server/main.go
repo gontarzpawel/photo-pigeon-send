@@ -19,12 +19,13 @@ func main() {
 	config.Init()
 
 	// Ensure uploads directory exists
-	if err := os.MkdirAll(config.UploadsDir, 0755); err != nil {
+	uploadsDir := config.UploadsDir
+	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
 		log.Fatalf("Failed to create uploads directory: %v", err)
 	}
 
 	// Load existing file hashes
-	filehandler.LoadExistingHashes()
+	filehandler.LoadExistingHashes(uploadsDir)
 
 	// Setup Gin router
 	router := gin.Default()
@@ -46,7 +47,7 @@ func main() {
 	authorized := router.Group("/")
 	authorized.Use(middleware.AuthMiddleware())
 	{
-		authorized.POST("/upload", filehandler.HandleUpload)
+		authorized.POST("/upload", filehandler.HandleUpload(uploadsDir))
 	}
 
 	// Start the server
