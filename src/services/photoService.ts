@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { authService } from "./authService";
 
@@ -14,6 +13,7 @@ export interface QueueItem {
   originalPath?: string;
   error?: string;
   _lastStatus?: string; // To track status changes
+  _notified?: boolean; // To track if a notification has been shown
 }
 
 // For backward compatibility - alias QueueItem as QueuedPhoto
@@ -63,7 +63,8 @@ class PhotoQueueManager {
       serverUrl,
       uploadApiPath,
       source,
-      originalPath
+      originalPath,
+      _notified: false
     };
     
     // Add to queue
@@ -85,8 +86,8 @@ class PhotoQueueManager {
       if (item.status === 'pending') {
         await this.uploadItem(item);
       } else if (item.status === 'completed' || item.status === 'failed') {
-        // Remove completed or failed items from the queue
-        this.removeFromQueue(item.id);
+        // Keep the item in the queue until cleared
+        break;
       } else {
         // Skip items that are currently uploading
         break;
@@ -173,9 +174,7 @@ class PhotoQueueManager {
       item.progress = 100;
       this.notifyQueueChange();
       
-      // Show success toast
-      toast.success(`Uploaded ${item.file.name} successfully`);
-      
+      // Individual toast notifications are now handled by the consolidated feedback system
     } catch (error) {
       console.error('Upload error:', error);
       
@@ -184,8 +183,7 @@ class PhotoQueueManager {
       item.error = error instanceof Error ? error.message : 'Unknown error';
       this.notifyQueueChange();
       
-      // Show error toast
-      toast.error(item.error);
+      // Individual toast notifications are now handled by the consolidated feedback system
     }
   }
 }

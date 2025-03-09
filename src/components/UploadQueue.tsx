@@ -38,6 +38,8 @@ const UploadQueue = () => {
         <h3 className="font-medium text-sm">
           Upload Queue ({queue.length})
           {uploadingCount > 0 && ` • Uploading ${uploadingCount}`}
+          {completedCount > 0 && ` • Completed ${completedCount}`}
+          {failedCount > 0 && ` • Failed ${failedCount}`}
         </h3>
         <div className="flex items-center space-x-2">
           {uploadingCount > 0 && (
@@ -62,6 +64,7 @@ const UploadQueue = () => {
           <div className="flex justify-between mb-2">
             <div className="text-xs text-gray-500">
               {pendingCount > 0 && `${pendingCount} pending • `}
+              {uploadingCount > 0 && `${uploadingCount} uploading • `}
               {completedCount > 0 && `${completedCount} completed • `}
               {failedCount > 0 && `${failedCount} failed`}
             </div>
