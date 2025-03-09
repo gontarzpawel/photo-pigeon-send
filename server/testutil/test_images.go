@@ -1,17 +1,15 @@
-
 package testutil
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 )
 
 // Test image constants
 const (
-	TestDataDir      = "../testdata"
-	NoExifImagePath  = "../testdata/no_exif.jpg"
-	WithExifImagePath = "../testdata/sample_with_exif.jpg"
+	TestDataDir       = "../testdata"
+	NoExifImagePath   = "../testdata/without_exif.jpg"
+	WithExifImagePath = "../testdata/with_exif.jpg"
 )
 
 // SetupTestImages creates necessary test images for unit tests
@@ -44,7 +42,7 @@ func createNoExifImage(t *testing.T) {
 		0x00, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00, 0x37,
 		0xFF, 0xD9,
 	}
-	
+
 	if err := os.WriteFile(NoExifImagePath, noExifData, 0644); err != nil {
 		t.Fatalf("Failed to create test image: %v", err)
 	}
@@ -55,7 +53,7 @@ func CleanupTestImages(t *testing.T) {
 	filesToRemove := []string{
 		NoExifImagePath,
 	}
-	
+
 	for _, path := range filesToRemove {
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			t.Errorf("Failed to clean up test file %s: %v", path, err)

@@ -1,25 +1,23 @@
-
 package main
 
 import (
 	"log"
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	
+
 	"image-upload-server/auth"
+	"image-upload-server/config"
 	"image-upload-server/filehandler"
 	"image-upload-server/middleware"
-	"image-upload-server/config"
 )
 
 func main() {
 	// Initialize configuration
 	config.Init()
-	
+
 	// Ensure uploads directory exists
 	if err := os.MkdirAll(config.UploadsDir, 0755); err != nil {
 		log.Fatalf("Failed to create uploads directory: %v", err)
