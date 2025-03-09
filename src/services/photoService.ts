@@ -9,6 +9,7 @@ export interface QueueItem {
   status: 'pending' | 'uploading' | 'completed' | 'failed';
   progress: number;
   serverUrl: string;
+  uploadApiPath?: string;
   source: 'camera' | 'gallery';
   originalPath?: string;
   error?: string;
@@ -47,7 +48,8 @@ class PhotoQueueManager {
     file: File, 
     serverUrl: string, 
     source: 'camera' | 'gallery',
-    originalPath?: string
+    originalPath?: string,
+    uploadApiPath: string = "upload"
   ): string {
     // Generate a unique ID
     const id = Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -59,6 +61,7 @@ class PhotoQueueManager {
       status: 'pending',
       progress: 0,
       serverUrl,
+      uploadApiPath,
       source,
       originalPath
     };
@@ -126,13 +129,11 @@ class PhotoQueueManager {
     this.notifyQueueChange();
     
     try {
-      // Ensure we have a server URL that ends with /upload
-      let uploadUrl = item.serverUrl;
-      if (!uploadUrl.endsWith('/upload')) {
-        uploadUrl = uploadUrl.endsWith('/') 
-          ? `${uploadUrl}upload` 
-          : `${uploadUrl}/upload`;
-      }
+      // Use the upload API path if provided, otherwise default to "upload"
+      const uploadApiPath = item.uploadApiPath || "upload";
+      
+      // Build the full upload URL using authService's utility method
+      const uploadUrl = authService.buildApiUrl(item.serverUrl, uploadApiPath);
       
       // Create form data
       const formData = new FormData();

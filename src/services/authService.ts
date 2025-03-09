@@ -12,14 +12,17 @@ export interface User {
 class AuthService {
   private tokenKey = "photo_pigeon_auth_token";
   private userKey = "photo_pigeon_user";
+  private baseUrlKey = "photo_pigeon_base_url";
+  private apiPathKey = "photo_pigeon_api_path";
   
   // Login the user and store the token
-  async login(username: string, password: string, serverUrl: string): Promise<boolean> {
+  async login(username: string, password: string, serverUrl: string, apiPath: string = "login"): Promise<boolean> {
     try {
-      // Make sure the URL ends with /login
-      const loginUrl = serverUrl.endsWith('/') 
-        ? `${serverUrl}login` 
-        : `${serverUrl}/login`;
+      // Store the base URL for future use
+      this.saveBaseUrl(serverUrl);
+      
+      // Construct the full login URL
+      const loginUrl = this.buildApiUrl(serverUrl, apiPath);
       
       const response = await fetch(loginUrl, {
         method: 'POST',
@@ -48,10 +51,33 @@ class AuthService {
     }
   }
   
+  // Build a full API URL from the base URL and path
+  buildApiUrl(baseUrl: string, apiPath: string): string {
+    // Normalize the base URL to ensure it ends with a slash
+    const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    
+    // Normalize the API path to ensure it doesn't start with a slash
+    const normalizedApiPath = apiPath.startsWith('/') ? apiPath.substring(1) : apiPath;
+    
+    // Combine them
+    return `${normalizedBaseUrl}${normalizedApiPath}`;
+  }
+  
+  // Save the base URL for future reference
+  saveBaseUrl(baseUrl: string): void {
+    localStorage.setItem(this.baseUrlKey, baseUrl);
+  }
+  
+  // Get the stored base URL
+  getBaseUrl(): string | null {
+    return localStorage.getItem(this.baseUrlKey);
+  }
+  
   // Logout the user
   logout(): void {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
+    // Don't remove the baseUrl so it can be reused on the next login
   }
   
   // Check if the user is logged in
