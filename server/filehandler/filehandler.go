@@ -65,20 +65,22 @@ func HandleUpload(uploadsDir string) func(c *gin.Context) {
 			return
 		}
 
+		var dateDir string
+
 		// Extract image date from metadata
 		imageDate, err := exif.ExtractImageDate(buffer)
 		if err != nil {
 			log.Printf("Failed to extract date from image: %v", err)
-			imageDate = time.Now()
+			//imageDate = time.Now()
+			dateDir = filepath.Join(uploadsDir, "na")
 		} else {
 			log.Printf("Successfully extracted image date: %v", imageDate)
+			// Create date-based directory structure: YYYY/MM/DD
+			year := fmt.Sprintf("%d", imageDate.Year())
+			month := fmt.Sprintf("%02d", imageDate.Month())
+			day := fmt.Sprintf("%02d", imageDate.Day())
+			dateDir = filepath.Join(uploadsDir, year, month, day)
 		}
-
-		// Create date-based directory structure: YYYY/MM/DD
-		year := fmt.Sprintf("%d", imageDate.Year())
-		month := fmt.Sprintf("%02d", imageDate.Month())
-		day := fmt.Sprintf("%02d", imageDate.Day())
-		dateDir := filepath.Join(uploadsDir, year, month, day)
 
 		// Create directory if it doesn't exist
 		if err := os.MkdirAll(dateDir, 0755); err != nil {

@@ -1,4 +1,3 @@
-
 package config
 
 import (
@@ -9,7 +8,7 @@ const (
 	// Default uploads directory
 	UploadsDir = "./uploads"
 	// Default server port
-	Port = ":3001"
+	Port = "0.0.0.0:3001"
 )
 
 var (
