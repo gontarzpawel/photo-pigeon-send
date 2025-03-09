@@ -6,20 +6,22 @@ import (
 
 const (
 	// Default uploads directory
-	UploadsDir = "./uploads"
+	UploadsDirDefault = "./uploads"
 	// Default server port
 	Port = "0.0.0.0:3001"
 )
 
 var (
 	// JWT secret key for token signing
-	JWTSecret string
+	JWTSecret           string
+	UploadsDirOverriden string
 )
 
 // Init initializes the configuration
 func Init() {
 	// Set JWT secret from environment or use default
 	JWTSecret = getEnvOrDefault("JWT_SECRET", "your-secret-key-change-in-production")
+	UploadsDirOverriden = getEnvOrDefault("UPLOADS_DIR", UploadsDirDefault)
 }
 
 // getEnvOrDefault gets environment variable or returns default if not set

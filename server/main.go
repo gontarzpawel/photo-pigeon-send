@@ -19,7 +19,7 @@ func main() {
 	config.Init()
 
 	// Ensure uploads directory exists
-	uploadsDir := config.UploadsDir
+	uploadsDir := config.UploadsDirOverriden
 	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
 		log.Fatalf("Failed to create uploads directory: %v", err)
 	}
