@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { authService } from "./authService";
 
@@ -76,25 +77,31 @@ class PhotoQueueManager {
 
   // Start uploading all files in the queue
   async startUploadAll(): Promise<void> {
-    if (this.isUploading || this.queue.length === 0) return;
+    if (this.isUploading) return;
+    
+    if (this.queue.length === 0) return;
     
     this.isUploading = true;
     
-    // Process the queue sequentially
-    while (this.queue.length > 0) {
-      const item = this.queue[0];
-      if (item.status === 'pending') {
-        await this.uploadItem(item);
-      } else if (item.status === 'completed' || item.status === 'failed') {
-        // Keep the item in the queue until cleared
-        break;
-      } else {
-        // Skip items that are currently uploading
-        break;
+    // Get all pending items
+    const pendingItems = this.queue.filter(item => item.status === 'pending');
+    
+    // Process all pending items concurrently
+    const uploadPromises = pendingItems.map(item => this.uploadItem(item));
+    
+    try {
+      await Promise.all(uploadPromises);
+    } catch (error) {
+      console.error("Error in batch upload:", error);
+    } finally {
+      this.isUploading = false;
+      
+      // Check if there are still pending items and process them
+      const stillPendingItems = this.queue.filter(item => item.status === 'pending');
+      if (stillPendingItems.length > 0) {
+        this.startUploadAll();
       }
     }
-    
-    this.isUploading = false;
   }
 
   // Cancel an upload

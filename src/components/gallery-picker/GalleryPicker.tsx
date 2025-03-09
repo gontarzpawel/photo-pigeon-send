@@ -22,6 +22,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAutoScanLoading, setIsAutoScanLoading] = useState(false);
   const [showLoginForm, setShowLoginForm] = useState(false);
+  const [localServerUrl, setLocalServerUrl] = useState(serverUrl);
   const { toast } = useToast();
   
   // Check if the user is authenticated
@@ -29,7 +30,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
 
   // Validate server URL before proceeding
   const validateServerUrl = (): boolean => {
-    if (!serverUrl) {
+    if (!localServerUrl) {
       toast({
         title: "Server URL required",
         description: "Please enter the URL of the server to send images to.",
@@ -38,7 +39,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
       return false;
     }
     
-    if (!isValidUrl(serverUrl)) {
+    if (!isValidUrl(localServerUrl)) {
       toast({
         title: "Invalid URL",
         description: "Please enter a valid URL starting with http:// or https://",
@@ -76,7 +77,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
         
         // Check if already uploaded and add to queue if not
         if (!photoQueue.isFileUploaded(filePath)) {
-          photoQueue.addToQueue(file, serverUrl, 'gallery', filePath);
+          photoQueue.addToQueue(file, localServerUrl, 'gallery', filePath);
           addedCount++;
         }
       });
@@ -87,6 +88,9 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
           description: `${files.length - addedCount} photos were already uploaded.`,
         });
         onPhotosSelected(addedCount);
+        
+        // Start uploading automatically after adding photos
+        photoQueue.startUploadAll();
       } else if (files.length > 0) {
         toast({
           title: "No new photos added",
@@ -98,6 +102,11 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
       // Reset input so the same files can be selected again
       e.target.value = '';
     }
+  };
+
+  // Handle local server URL changes
+  const handleServerUrlChange = (url: string) => {
+    setLocalServerUrl(url);
   };
 
   // Scan gallery and find unsynced photos
@@ -137,7 +146,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
         const filePath = URL.createObjectURL(file);
         
         if (!photoQueue.isFileUploaded(filePath)) {
-          photoQueue.addToQueue(file, serverUrl, 'gallery', filePath);
+          photoQueue.addToQueue(file, localServerUrl, 'gallery', filePath);
           addedCount++;
         }
       });
@@ -187,7 +196,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
             const filePath = URL.createObjectURL(file);
             
             if (!photoQueue.isFileUploaded(filePath)) {
-              photoQueue.addToQueue(file, serverUrl, 'gallery', filePath);
+              photoQueue.addToQueue(file, localServerUrl, 'gallery', filePath);
               addedCount++;
             }
           });
@@ -256,7 +265,8 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
   if (showLoginForm) {
     return (
       <LoginForm 
-        serverUrl={serverUrl}
+        serverUrl={localServerUrl}
+        onServerUrlChange={handleServerUrlChange}
         onLoginSuccess={handleLoginSuccess}
       />
     );
