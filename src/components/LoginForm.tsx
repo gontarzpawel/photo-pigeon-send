@@ -9,10 +9,11 @@ import { toast } from "sonner";
 
 interface LoginFormProps {
   serverUrl: string;
+  loginApiPath?: string;
   onLoginSuccess: () => void;
 }
 
-const LoginForm = ({ serverUrl, onLoginSuccess }: LoginFormProps) => {
+const LoginForm = ({ serverUrl, loginApiPath = "login", onLoginSuccess }: LoginFormProps) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +34,7 @@ const LoginForm = ({ serverUrl, onLoginSuccess }: LoginFormProps) => {
     setIsLoading(true);
     
     try {
-      const success = await authService.login(username, password, serverUrl);
+      const success = await authService.login(username, password, serverUrl, loginApiPath);
       
       if (success) {
         toast.success("Login successful");
