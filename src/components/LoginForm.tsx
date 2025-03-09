@@ -9,14 +9,46 @@ import { toast } from "sonner";
 
 interface LoginFormProps {
   serverUrl: string;
+  onServerUrlChange: (url: string) => void;
   loginApiPath?: string;
   onLoginSuccess: () => void;
 }
 
-const LoginForm = ({ serverUrl, loginApiPath = "login", onLoginSuccess }: LoginFormProps) => {
+const LoginForm = ({ 
+  serverUrl, 
+  onServerUrlChange,
+  loginApiPath = "login", 
+  onLoginSuccess 
+}: LoginFormProps) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
+  
+  // Function to validate URL
+  const isValidUrl = (string: string): boolean => {
+    try {
+      const url = new URL(string);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch (_) {
+      return false;
+    }
+  };
+
+  // Validate URL when it changes
+  const handleServerUrlChange = (value: string) => {
+    onServerUrlChange(value);
+    
+    if (value) {
+      if (!isValidUrl(value)) {
+        setUrlError("Please enter a valid URL starting with http:// or https://");
+      } else {
+        setUrlError(null);
+      }
+    } else {
+      setUrlError(null); // No error when field is empty
+    }
+  };
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +60,11 @@ const LoginForm = ({ serverUrl, loginApiPath = "login", onLoginSuccess }: LoginF
     
     if (!serverUrl) {
       toast.error("Server URL is required");
+      return;
+    }
+
+    if (urlError) {
+      toast.error("Please enter a valid server URL");
       return;
     }
     
@@ -56,6 +93,21 @@ const LoginForm = ({ serverUrl, loginApiPath = "login", onLoginSuccess }: LoginF
       <form onSubmit={handleLogin}>
         <CardContent className="space-y-4">
           <div className="space-y-2">
+            <Label htmlFor="server-url">Server URL</Label>
+            <Input
+              id="server-url"
+              type="text"
+              placeholder="https://your-server.com"
+              value={serverUrl}
+              onChange={(e) => handleServerUrlChange(e.target.value)}
+              disabled={isLoading}
+              className={urlError ? "border-red-500" : ""}
+            />
+            {urlError && (
+              <p className="text-xs text-red-500 mt-1">{urlError}</p>
+            )}
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="username">Username</Label>
             <Input
               id="username"
@@ -82,7 +134,7 @@ const LoginForm = ({ serverUrl, loginApiPath = "login", onLoginSuccess }: LoginF
           <Button
             type="submit"
             className="w-full"
-            disabled={isLoading}
+            disabled={isLoading || !!urlError}
           >
             {isLoading ? "Logging in..." : "Login"}
           </Button>

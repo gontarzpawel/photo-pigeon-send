@@ -138,6 +138,7 @@ const Index = () => {
         // Login form when not authenticated
         <LoginForm 
           serverUrl={serverUrl}
+          onServerUrlChange={setServerUrl}
           onLoginSuccess={handleLoginSuccess}
         />
       ) : (
