@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { photoQueue } from "@/services/photoService";
 import { authService } from "@/services/authService";
@@ -18,6 +18,16 @@ const isValidUrl = (string: string): boolean => {
   }
 };
 
+// Detect if running on iOS device
+const isIOS = (): boolean => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+};
+
+// Detect if running on mobile device
+const isMobile = (): boolean => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
 const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAutoScanLoading, setIsAutoScanLoading] = useState(false);
@@ -27,6 +37,14 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
   
   // Check if the user is authenticated
   const isAuthenticated = authService.isLoggedIn();
+
+  // Reset loading states when unmounting
+  useEffect(() => {
+    return () => {
+      setIsLoading(false);
+      setIsAutoScanLoading(false);
+    };
+  }, []);
 
   // Validate server URL before proceeding
   const validateServerUrl = (): boolean => {
@@ -69,38 +87,43 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
   
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
-      let addedCount = 0;
-      
-      files.forEach(file => {
-        // For web, use the file object URL as the "originalPath"
-        const filePath = URL.createObjectURL(file);
-        
-        // Check if already uploaded and add to queue if not
-        if (!photoQueue.isFileUploaded(filePath)) {
-          photoQueue.addToQueue(file, localServerUrl, 'gallery', filePath);
-          addedCount++;
-        }
-      });
-      
-      if (addedCount > 0) {
-        toast({
-          title: `Added ${addedCount} photos to queue`,
-          description: `${files.length - addedCount} photos were already uploaded.`,
-        });
-        onPhotosSelected(addedCount);
-        
-        // Start uploading automatically after adding photos
-        photoQueue.startUploadAll();
-      } else if (files.length > 0) {
-        toast({
-          title: "No new photos added",
-          description: "All selected photos were already uploaded.",
-          variant: "destructive",
-        });
-      }
+      processSelectedFiles(files);
       
       // Reset input so the same files can be selected again
       e.target.value = '';
+    }
+  };
+
+  // Process the selected files
+  const processSelectedFiles = (files: File[]) => {
+    let addedCount = 0;
+    
+    files.forEach(file => {
+      // For web, use the file object URL as the "originalPath"
+      const filePath = URL.createObjectURL(file);
+      
+      // Check if already uploaded and add to queue if not
+      if (!photoQueue.isFileUploaded(filePath)) {
+        photoQueue.addToQueue(file, localServerUrl, 'gallery', filePath);
+        addedCount++;
+      }
+    });
+    
+    if (addedCount > 0) {
+      toast({
+        title: `Added ${addedCount} photos to queue`,
+        description: `${files.length - addedCount} photos were already uploaded.`,
+      });
+      onPhotosSelected(addedCount);
+      
+      // Start uploading automatically after adding photos
+      photoQueue.startUploadAll();
+    } else if (files.length > 0) {
+      toast({
+        title: "No new photos added",
+        description: "All selected photos were already uploaded.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -116,9 +139,20 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     setIsLoading(true);
     
     try {
-      // In a real mobile app, this would access the native gallery
-      // For now, we'll simulate it by opening the file picker
-      document.getElementById('gallery-file-input')?.click();
+      // For mobile, optimize for better multi-select experience
+      const fileInput = document.getElementById('gallery-file-input') as HTMLInputElement;
+      
+      if (isMobile()) {
+        // On mobile, ensure multiple attribute is set for best native experience
+        fileInput.multiple = true;
+        
+        if (isIOS()) {
+          // On iOS, set capture to none to access photo library
+          fileInput.setAttribute('capture', 'none');
+        }
+      }
+      
+      fileInput?.click();
     } catch (error) {
       console.error('Error scanning gallery:', error);
       toast({
@@ -140,36 +174,12 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
-      let addedCount = 0;
-      
-      files.forEach(file => {
-        const filePath = URL.createObjectURL(file);
-        
-        if (!photoQueue.isFileUploaded(filePath)) {
-          photoQueue.addToQueue(file, localServerUrl, 'gallery', filePath);
-          addedCount++;
-        }
-      });
-      
-      // Provide feedback to user
-      if (addedCount > 0) {
-        toast({
-          title: `Auto-detected ${addedCount} new photos from directory`,
-          description: "Starting upload automatically...",
-        });
-        onPhotosSelected(addedCount);
-        
-        // Start uploading automatically
-        photoQueue.startUploadAll();
-      } else {
-        toast({
-          title: "No new photos found in directory",
-          description: "All photos are already uploaded.",
-        });
-      }
+      processSelectedFiles(files);
       
       // Reset for future use
       e.target.value = '';
+      setIsAutoScanLoading(false);
+    } else {
       setIsAutoScanLoading(false);
     }
   };
@@ -181,49 +191,35 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     setIsAutoScanLoading(true);
     
     try {
-      // In a mobile app, this would directly access media library
-      // In web, we'll simulate by triggering the file picker
-      const fileInput = document.getElementById('gallery-auto-scan-input') as HTMLInputElement;
-      fileInput?.click();
-      
-      // Add listener for when files are selected
-      fileInput.onchange = (e) => {
-        if (e.target && (e.target as HTMLInputElement).files && (e.target as HTMLInputElement).files!.length > 0) {
-          const files = Array.from((e.target as HTMLInputElement).files!);
-          let addedCount = 0;
-          
-          files.forEach(file => {
-            const filePath = URL.createObjectURL(file);
-            
-            if (!photoQueue.isFileUploaded(filePath)) {
-              photoQueue.addToQueue(file, localServerUrl, 'gallery', filePath);
-              addedCount++;
-            }
-          });
-          
-          // Provide feedback to user
-          if (addedCount > 0) {
-            toast({
-              title: `Auto-detected ${addedCount} new photos`,
-              description: "Starting upload automatically...",
-            });
-            onPhotosSelected(addedCount);
-            
-            // Start uploading automatically
-            photoQueue.startUploadAll();
-          } else {
-            toast({
-              title: "No new photos found",
-              description: "All photos are already uploaded.",
-            });
-          }
-          
-          // Reset for future use
-          fileInput.value = '';
-          setIsAutoScanLoading(false);
+      // Different approach for auto-scan vs. manual directory selection
+      if (isMobile()) {
+        // On mobile, optimize for camera roll access
+        const fileInput = document.getElementById('gallery-auto-scan-input') as HTMLInputElement;
+        fileInput.multiple = true;
+        
+        // For iOS specifically, try to access the whole photo library
+        if (isIOS()) {
+          fileInput.setAttribute('capture', 'none');
+          fileInput.accept = 'image/*';
         }
-      };
-      
+        
+        fileInput?.click();
+        
+        // Add listener for when files are selected
+        fileInput.onchange = (e) => {
+          if (e.target && (e.target as HTMLInputElement).files && (e.target as HTMLInputElement).files!.length > 0) {
+            const files = Array.from((e.target as HTMLInputElement).files!);
+            processSelectedFiles(files);
+          } else {
+            setIsAutoScanLoading(false);
+          }
+        };
+      } else {
+        // On desktop, use the webkitdirectory approach
+        const directoryInput = document.getElementById('gallery-auto-scan-input') as HTMLInputElement;
+        directoryInput.multiple = true;
+        directoryInput?.click();
+      }
     } catch (error) {
       console.error('Error auto-scanning gallery:', error);
       toast({

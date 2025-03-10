@@ -18,6 +18,7 @@ const GalleryInputs = ({ handleFileChange, handleDirectorySelect }: GalleryInput
         id="gallery-auto-scan-input" 
         type="file" 
         accept="image/*" 
+        onChange={handleFileChange} 
         className="hidden"
         multiple
       />
