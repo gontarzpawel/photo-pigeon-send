@@ -74,6 +74,12 @@ const LoginForm = ({
       const success = await authService.login(username, password, serverUrl, loginApiPath);
       
       if (success) {
+        // Identify the user with Heap Analytics
+        if (window.heap && typeof window.heap.identify === 'function') {
+          window.heap.identify(username);
+          console.log('User identified in Heap Analytics:', username);
+        }
+        
         toast.success("Login successful");
         onLoginSuccess();
       }
