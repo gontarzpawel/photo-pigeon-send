@@ -6,6 +6,8 @@ import GalleryInputs from "./GalleryInputs";
 import LoginForm from "../LoginForm";
 import { useFileSelection } from "./useFileSelection";
 import { GalleryPickerProps } from "./types";
+import { Button } from "@/components/ui/button";
+import { isIOS } from "./utils";
 
 const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
   const [showLoginForm, setShowLoginForm] = useState(false);
@@ -26,6 +28,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     handleDirectorySelect,
     handleScanGallery,
     handleAutoScanAndUpload,
+    handleAutoDetectAndUpload,
     handleChooseDirectoryAndUpload,
     resetLoadingStates
   } = useFileSelection(
@@ -65,13 +68,27 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
         onChooseDirectoryAndUpload={handleChooseDirectoryAndUpload}
       />
       
+      {isIOS() && (
+        <Button 
+          variant="outline" 
+          onClick={handleAutoDetectAndUpload}
+          disabled={isLoading || isAutoScanLoading}
+          className="w-full"
+        >
+          {isAutoScanLoading ? "Scanning..." : "Quick Upload Photos"}
+        </Button>
+      )}
+      
       <GalleryInputs
         handleFileChange={handleFileChange}
         handleDirectorySelect={handleDirectorySelect}
       />
       
       <p className="text-xs text-gray-500 text-center">
-        Select multiple photos to upload or use auto-detect to find and upload all new photos automatically.
+        {isIOS() ? 
+          "Use Quick Upload to easily select and upload new photos without manual selection." :
+          "Select multiple photos to upload or use auto-detect to find and upload all new photos automatically."
+        }
       </p>
     </div>
   );

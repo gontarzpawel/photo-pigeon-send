@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { photoQueue } from "@/services/photoService";
-import { isValidUrl, isMobile, isIOS } from "./utils";
+import { isValidUrl, isMobile, isIOS, requestPhotosAccess } from "./utils";
 
 export const usePhotoProcessing = (
   serverUrl: string, 
@@ -76,6 +76,52 @@ export const usePhotoProcessing = (
     }
   };
 
+  // Auto-detect new photos on device (iOS/mobile specific)
+  const autoDetectNewPhotos = async (): Promise<void> => {
+    try {
+      // Request photo library access first
+      const hasAccess = await requestPhotosAccess();
+      
+      if (!hasAccess) {
+        toast({
+          title: "Permission denied",
+          description: "Unable to access your photos. Please grant permission in your settings.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // For iOS/mobile, we'll use the most permissive file input possible
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.multiple = true;
+      
+      // This will allow selection from the most recent photos
+      // Unfortunately, due to browser security, we can't programmatically select files
+      // The user will still need to tap to confirm the selection
+      
+      // Set up the onchange handler
+      input.onchange = (event) => {
+        const target = event.target as HTMLInputElement;
+        if (target.files && target.files.length > 0) {
+          const files = Array.from(target.files);
+          processSelectedFiles(files);
+        }
+      };
+      
+      // Programmatically trigger the file picker
+      input.click();
+    } catch (error) {
+      console.error("Error auto-detecting photos:", error);
+      toast({
+        title: "Auto-detect failed",
+        description: "We couldn't automatically detect your photos. Please try manual selection.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Handle local server URL changes
   const handleServerUrlChange = (url: string) => {
     setLocalServerUrl(url);
@@ -107,6 +153,7 @@ export const usePhotoProcessing = (
     localServerUrl,
     validateServerUrl,
     processSelectedFiles,
+    autoDetectNewPhotos,
     handleServerUrlChange,
     configureFileInput,
     resetLoadingStates

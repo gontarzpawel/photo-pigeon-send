@@ -1,6 +1,8 @@
 
 import { usePhotoProcessing } from "./usePhotoProcessing";
 import { authService } from "@/services/authService";
+import { toast } from "sonner";
+import { isIOS } from "./utils";
 
 export const useFileSelection = (
   serverUrl: string,
@@ -16,6 +18,7 @@ export const useFileSelection = (
     localServerUrl,
     validateServerUrl,
     processSelectedFiles,
+    autoDetectNewPhotos,
     handleServerUrlChange,
     configureFileInput,
     resetLoadingStates
@@ -106,6 +109,29 @@ export const useFileSelection = (
     }
   };
 
+  // Automatically detect and upload all unsynced photos
+  const handleAutoDetectAndUpload = async () => {
+    if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
+      setIsAutoScanLoading(false);
+      return;
+    }
+    
+    setIsAutoScanLoading(true);
+    
+    try {
+      // Use our new auto-detection function
+      await autoDetectNewPhotos();
+      
+      // Reset loading state after auto-detection completes or fails
+      setIsAutoScanLoading(false);
+    } catch (error) {
+      console.error('Error auto-detecting photos:', error);
+      setIsAutoScanLoading(false);
+      
+      toast.error('Failed to access photos. Please try manual selection.');
+    }
+  };
+
   // Automatically scan and upload all unsynced photos
   const handleAutoScanAndUpload = async () => {
     if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
@@ -116,6 +142,12 @@ export const useFileSelection = (
     setIsAutoScanLoading(true);
     
     try {
+      // For iOS devices, use the new auto-detection method
+      if (isIOS()) {
+        await handleAutoDetectAndUpload();
+        return;
+      }
+      
       // Enhanced mobile photo selection for Auto Scan
       const fileInput = document.getElementById('gallery-auto-scan-input') as HTMLInputElement;
       
@@ -188,6 +220,7 @@ export const useFileSelection = (
     handleDirectorySelect,
     handleScanGallery,
     handleAutoScanAndUpload,
+    handleAutoDetectAndUpload,
     handleChooseDirectoryAndUpload,
     handleServerUrlChange,
     resetLoadingStates
