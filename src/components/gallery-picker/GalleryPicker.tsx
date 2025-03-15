@@ -1,305 +1,44 @@
 
 import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { photoQueue } from "@/services/photoService";
 import { authService } from "@/services/authService";
 import GalleryButtons from "./GalleryButtons";
 import GalleryInputs from "./GalleryInputs";
-import { GalleryPickerProps } from "./types";
 import LoginForm from "../LoginForm";
-
-// Function to validate URL
-const isValidUrl = (string: string): boolean => {
-  try {
-    const url = new URL(string);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch (_) {
-    return false;
-  }
-};
-
-// Detect if running on iOS device
-const isIOS = (): boolean => {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-};
-
-// Detect if running on mobile device
-const isMobile = (): boolean => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-};
+import { useFileSelection } from "./useFileSelection";
+import { GalleryPickerProps } from "./types";
 
 const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isAutoScanLoading, setIsAutoScanLoading] = useState(false);
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [localServerUrl, setLocalServerUrl] = useState(serverUrl);
-  const { toast } = useToast();
   
   // Check if the user is authenticated
   const isAuthenticated = authService.isLoggedIn();
-
-  // Reset loading states when unmounting
-  useEffect(() => {
-    return () => {
-      setIsLoading(false);
-      setIsAutoScanLoading(false);
-    };
-  }, []);
-
-  // Validate server URL before proceeding
-  const validateServerUrl = (): boolean => {
-    if (!localServerUrl) {
-      toast({
-        title: "Server URL required",
-        description: "Please enter the URL of the server to send images to.",
-        variant: "destructive",
-      });
-      return false;
-    }
-    
-    if (!isValidUrl(localServerUrl)) {
-      toast({
-        title: "Invalid URL",
-        description: "Please enter a valid URL starting with http:// or https://",
-        variant: "destructive",
-      });
-      return false;
-    }
-    
-    return true;
-  };
-
-  // Check authentication before proceeding
-  const checkAuthBeforeProceeding = (): boolean => {
-    if (!isAuthenticated) {
-      setShowLoginForm(true);
-      return false;
-    }
-    return true;
-  };
-
-  // Handle file selection from file input (multiple files)
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
-      e.target.value = '';
-      setIsLoading(false); // Reset loading state when validation fails
-      return;
-    }
   
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
-      processSelectedFiles(files);
-      
-      // Reset input so the same files can be selected again
-      e.target.value = '';
-    } 
-    
-    // Always reset loading state after file selection (or cancellation)
-    setIsLoading(false);
-  };
-
-  // Process the selected files
-  const processSelectedFiles = (files: File[]) => {
-    let addedCount = 0;
-    
-    files.forEach(file => {
-      // For web, use the file object URL as the "originalPath"
-      const filePath = URL.createObjectURL(file);
-      
-      // Check if already uploaded and add to queue if not
-      if (!photoQueue.isFileUploaded(filePath)) {
-        photoQueue.addToQueue(file, localServerUrl, 'gallery', filePath);
-        addedCount++;
-      }
-    });
-    
-    if (addedCount > 0) {
-      toast({
-        title: `Added ${addedCount} photos to queue`,
-        description: `${files.length - addedCount} photos were already uploaded.`,
-      });
-      onPhotosSelected(addedCount);
-      
-      // Start uploading automatically after adding photos
-      photoQueue.startUploadAll();
-    } else if (files.length > 0) {
-      toast({
-        title: "No new photos added",
-        description: "All selected photos were already uploaded.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle local server URL changes
+  // Handle server URL changes
   const handleServerUrlChange = (url: string) => {
     setLocalServerUrl(url);
   };
 
-  // Scan gallery and find unsynced photos
-  const handleScanGallery = async () => {
-    if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
-      setIsLoading(false); // Reset loading when validation fails
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      // Improved mobile selection experience
-      const fileInput = document.getElementById('gallery-file-input') as HTMLInputElement;
-      
-      if (fileInput) {
-        // Always ensure multiple selection is enabled
-        fileInput.multiple = true;
-        
-        // Configure for best mobile experience
-        if (isMobile()) {
-          // Remove any capture attribute to access full photo library
-          fileInput.removeAttribute('capture');
-          
-          // iOS specific optimization
-          if (isIOS()) {
-            fileInput.accept = 'image/*';
-          }
-        }
-        
-        // Handle cancelled selections
-        // Set a timeout to reset loading state in case user cancels selection
-        const timeoutId = setTimeout(() => {
-          setIsLoading(false);
-        }, 30000); // 30 seconds timeout as fallback
-        
-        // Ensure loading state is reset when file input dialog is closed
-        fileInput.onchange = () => {
-          clearTimeout(timeoutId);
-          // handleFileChange will handle the loading state
-        };
-        
-        fileInput.click();
-      }
-    } catch (error) {
-      console.error('Error scanning gallery:', error);
-      toast({
-        title: "Error scanning gallery",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-    }
-  };
+  const {
+    isLoading,
+    isAutoScanLoading,
+    handleFileChange,
+    handleDirectorySelect,
+    handleScanGallery,
+    handleAutoScanAndUpload,
+    handleChooseDirectoryAndUpload,
+    resetLoadingStates
+  } = useFileSelection(
+    serverUrl, 
+    onPhotosSelected, 
+    setShowLoginForm,
+    handleServerUrlChange
+  );
 
-  // Handler for directory selection
-  const handleDirectorySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
-      e.target.value = '';
-      setIsAutoScanLoading(false); // Reset loading when validation fails
-      return;
-    }
-    
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
-      processSelectedFiles(files);
-      
-      // Reset for future use
-      e.target.value = '';
-    }
-    
-    // Always reset loading state after directory selection (or cancellation)
-    setIsAutoScanLoading(false);
-  };
-
-  // Automatically scan and upload all unsynced photos
-  const handleAutoScanAndUpload = async () => {
-    if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
-      setIsAutoScanLoading(false); // Reset loading when validation fails
-      return;
-    }
-    
-    setIsAutoScanLoading(true);
-    
-    try {
-      // Enhanced mobile photo selection for Auto Scan
-      const fileInput = document.getElementById('gallery-auto-scan-input') as HTMLInputElement;
-      
-      if (fileInput) {
-        // Always enable multiple selection
-        fileInput.multiple = true;
-        
-        // Mobile-specific optimizations
-        if (isMobile()) {
-          // Clear any capture attribute to access the full photo library
-          fileInput.removeAttribute('capture');
-          fileInput.accept = 'image/*';
-        }
-        
-        // Handle cancelled selections
-        // Set a timeout to reset loading state in case user cancels selection
-        const timeoutId = setTimeout(() => {
-          setIsAutoScanLoading(false);
-        }, 30000); // 30 seconds timeout as fallback
-        
-        fileInput.onchange = (e) => {
-          clearTimeout(timeoutId);
-          if (e.target && (e.target as HTMLInputElement).files && (e.target as HTMLInputElement).files!.length > 0) {
-            const files = Array.from((e.target as HTMLInputElement).files!);
-            processSelectedFiles(files);
-          }
-          setIsAutoScanLoading(false);
-        };
-        
-        fileInput.click();
-      }
-    } catch (error) {
-      console.error('Error auto-scanning gallery:', error);
-      toast({
-        title: "Error auto-scanning gallery",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive",
-      });
-      setIsAutoScanLoading(false);
-    }
-  };
-
-  // Function to handle directory selection for auto scan
-  const handleChooseDirectoryAndUpload = () => {
-    if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
-      setIsAutoScanLoading(false); // Reset loading when validation fails
-      return;
-    }
-    
-    setIsAutoScanLoading(true);
-    
-    try {
-      const directoryInput = document.getElementById('gallery-directory-input') as HTMLInputElement;
-      if (directoryInput) {
-        // Handle cancelled selections
-        // Set a timeout to reset loading state in case user cancels selection
-        const timeoutId = setTimeout(() => {
-          setIsAutoScanLoading(false);
-        }, 30000); // 30 seconds timeout as fallback
-        
-        directoryInput.onchange = (e) => {
-          clearTimeout(timeoutId);
-          if (e.target && (e.target as HTMLInputElement).files && (e.target as HTMLInputElement).files!.length > 0) {
-            const files = Array.from((e.target as HTMLInputElement).files!);
-            processSelectedFiles(files);
-          }
-          setIsAutoScanLoading(false);
-        };
-        
-        directoryInput.click();
-      }
-    } catch (error) {
-      console.error('Error selecting directory:', error);
-      toast({
-        title: "Error selecting directory",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive",
-      });
-      setIsAutoScanLoading(false);
-    }
-  };
+  // Reset loading states when unmounting
+  useEffect(() => {
+    return resetLoadingStates;
+  }, []);
 
   // Handle login success
   const handleLoginSuccess = () => {
