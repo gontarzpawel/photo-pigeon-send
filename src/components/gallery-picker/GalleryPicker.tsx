@@ -82,19 +82,20 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
       e.target.value = '';
+      setIsLoading(false); // Reset loading state when validation fails
       return;
     }
   
     if (e.target.files && e.target.files.length > 0) {
-      setIsLoading(false); // Reset loading state
       const files = Array.from(e.target.files);
       processSelectedFiles(files);
       
       // Reset input so the same files can be selected again
       e.target.value = '';
-    } else {
-      setIsLoading(false); // Reset if no files were selected
-    }
+    } 
+    
+    // Always reset loading state after file selection (or cancellation)
+    setIsLoading(false);
   };
 
   // Process the selected files
@@ -137,7 +138,10 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
 
   // Scan gallery and find unsynced photos
   const handleScanGallery = async () => {
-    if (!validateServerUrl() || !checkAuthBeforeProceeding()) return;
+    if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
+      setIsLoading(false); // Reset loading when validation fails
+      return;
+    }
     
     setIsLoading(true);
     
@@ -160,6 +164,18 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
           }
         }
         
+        // Handle cancelled selections
+        // Set a timeout to reset loading state in case user cancels selection
+        const timeoutId = setTimeout(() => {
+          setIsLoading(false);
+        }, 30000); // 30 seconds timeout as fallback
+        
+        // Ensure loading state is reset when file input dialog is closed
+        fileInput.onchange = () => {
+          clearTimeout(timeoutId);
+          // handleFileChange will handle the loading state
+        };
+        
         fileInput.click();
       }
     } catch (error) {
@@ -177,6 +193,7 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
   const handleDirectorySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
       e.target.value = '';
+      setIsAutoScanLoading(false); // Reset loading when validation fails
       return;
     }
     
@@ -186,15 +203,18 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
       
       // Reset for future use
       e.target.value = '';
-      setIsAutoScanLoading(false);
-    } else {
-      setIsAutoScanLoading(false);
     }
+    
+    // Always reset loading state after directory selection (or cancellation)
+    setIsAutoScanLoading(false);
   };
 
   // Automatically scan and upload all unsynced photos
   const handleAutoScanAndUpload = async () => {
-    if (!validateServerUrl() || !checkAuthBeforeProceeding()) return;
+    if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
+      setIsAutoScanLoading(false); // Reset loading when validation fails
+      return;
+    }
     
     setIsAutoScanLoading(true);
     
@@ -213,14 +233,19 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
           fileInput.accept = 'image/*';
         }
         
+        // Handle cancelled selections
+        // Set a timeout to reset loading state in case user cancels selection
+        const timeoutId = setTimeout(() => {
+          setIsAutoScanLoading(false);
+        }, 30000); // 30 seconds timeout as fallback
+        
         fileInput.onchange = (e) => {
+          clearTimeout(timeoutId);
           if (e.target && (e.target as HTMLInputElement).files && (e.target as HTMLInputElement).files!.length > 0) {
             const files = Array.from((e.target as HTMLInputElement).files!);
             processSelectedFiles(files);
-            setIsAutoScanLoading(false);
-          } else {
-            setIsAutoScanLoading(false);
           }
+          setIsAutoScanLoading(false);
         };
         
         fileInput.click();
@@ -238,22 +263,29 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
 
   // Function to handle directory selection for auto scan
   const handleChooseDirectoryAndUpload = () => {
-    if (!validateServerUrl() || !checkAuthBeforeProceeding()) return;
+    if (!validateServerUrl() || !checkAuthBeforeProceeding()) {
+      setIsAutoScanLoading(false); // Reset loading when validation fails
+      return;
+    }
     
     setIsAutoScanLoading(true);
     
     try {
       const directoryInput = document.getElementById('gallery-directory-input') as HTMLInputElement;
       if (directoryInput) {
-        // Set up change handler to reset loading state
+        // Handle cancelled selections
+        // Set a timeout to reset loading state in case user cancels selection
+        const timeoutId = setTimeout(() => {
+          setIsAutoScanLoading(false);
+        }, 30000); // 30 seconds timeout as fallback
+        
         directoryInput.onchange = (e) => {
+          clearTimeout(timeoutId);
           if (e.target && (e.target as HTMLInputElement).files && (e.target as HTMLInputElement).files!.length > 0) {
             const files = Array.from((e.target as HTMLInputElement).files!);
             processSelectedFiles(files);
-            setIsAutoScanLoading(false);
-          } else {
-            setIsAutoScanLoading(false);
           }
+          setIsAutoScanLoading(false);
         };
         
         directoryInput.click();
