@@ -86,11 +86,14 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     }
   
     if (e.target.files && e.target.files.length > 0) {
+      setIsLoading(false); // Reset loading state
       const files = Array.from(e.target.files);
       processSelectedFiles(files);
       
       // Reset input so the same files can be selected again
       e.target.value = '';
+    } else {
+      setIsLoading(false); // Reset if no files were selected
     }
   };
 
@@ -139,20 +142,26 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     setIsLoading(true);
     
     try {
-      // For mobile, optimize for better multi-select experience
+      // Improved mobile selection experience
       const fileInput = document.getElementById('gallery-file-input') as HTMLInputElement;
       
-      if (isMobile()) {
-        // On mobile, ensure multiple attribute is set for best native experience
+      if (fileInput) {
+        // Always ensure multiple selection is enabled
         fileInput.multiple = true;
         
-        if (isIOS()) {
-          // On iOS, set capture to none to access photo library
-          fileInput.setAttribute('capture', 'none');
+        // Configure for best mobile experience
+        if (isMobile()) {
+          // Remove any capture attribute to access full photo library
+          fileInput.removeAttribute('capture');
+          
+          // iOS specific optimization
+          if (isIOS()) {
+            fileInput.accept = 'image/*';
+          }
         }
+        
+        fileInput.click();
       }
-      
-      fileInput?.click();
     } catch (error) {
       console.error('Error scanning gallery:', error);
       toast({
@@ -160,7 +169,6 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
         description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -191,34 +199,31 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     setIsAutoScanLoading(true);
     
     try {
-      // Different approach for auto-scan vs. manual directory selection
-      if (isMobile()) {
-        // On mobile, optimize for camera roll access
-        const fileInput = document.getElementById('gallery-auto-scan-input') as HTMLInputElement;
+      // Enhanced mobile photo selection for Auto Scan
+      const fileInput = document.getElementById('gallery-auto-scan-input') as HTMLInputElement;
+      
+      if (fileInput) {
+        // Always enable multiple selection
         fileInput.multiple = true;
         
-        // For iOS specifically, try to access the whole photo library
-        if (isIOS()) {
-          fileInput.setAttribute('capture', 'none');
+        // Mobile-specific optimizations
+        if (isMobile()) {
+          // Clear any capture attribute to access the full photo library
+          fileInput.removeAttribute('capture');
           fileInput.accept = 'image/*';
         }
         
-        fileInput?.click();
-        
-        // Add listener for when files are selected
         fileInput.onchange = (e) => {
           if (e.target && (e.target as HTMLInputElement).files && (e.target as HTMLInputElement).files!.length > 0) {
             const files = Array.from((e.target as HTMLInputElement).files!);
             processSelectedFiles(files);
+            setIsAutoScanLoading(false);
           } else {
             setIsAutoScanLoading(false);
           }
         };
-      } else {
-        // On desktop, use the webkitdirectory approach
-        const directoryInput = document.getElementById('gallery-auto-scan-input') as HTMLInputElement;
-        directoryInput.multiple = true;
-        directoryInput?.click();
+        
+        fileInput.click();
       }
     } catch (error) {
       console.error('Error auto-scanning gallery:', error);
@@ -238,10 +243,21 @@ const GalleryPicker = ({ serverUrl, onPhotosSelected }: GalleryPickerProps) => {
     setIsAutoScanLoading(true);
     
     try {
-      // In a real mobile app, this would access specific directories
-      // For web, we use webkitdirectory attribute on input
       const directoryInput = document.getElementById('gallery-directory-input') as HTMLInputElement;
-      directoryInput?.click();
+      if (directoryInput) {
+        // Set up change handler to reset loading state
+        directoryInput.onchange = (e) => {
+          if (e.target && (e.target as HTMLInputElement).files && (e.target as HTMLInputElement).files!.length > 0) {
+            const files = Array.from((e.target as HTMLInputElement).files!);
+            processSelectedFiles(files);
+            setIsAutoScanLoading(false);
+          } else {
+            setIsAutoScanLoading(false);
+          }
+        };
+        
+        directoryInput.click();
+      }
     } catch (error) {
       console.error('Error selecting directory:', error);
       toast({
