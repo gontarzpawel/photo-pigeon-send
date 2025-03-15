@@ -78,8 +78,7 @@ func HandleUpload(uploadsDir string) func(c *gin.Context) {
 			// Create date-based directory structure: YYYY/MM/DD
 			year := fmt.Sprintf("%d", imageDate.Year())
 			month := fmt.Sprintf("%02d", imageDate.Month())
-			day := fmt.Sprintf("%02d", imageDate.Day())
-			dateDir = filepath.Join(uploadsDir, year, month, day)
+			dateDir = filepath.Join(uploadsDir, year, month)
 		}
 
 		// Create directory if it doesn't exist

@@ -31,6 +31,7 @@ type JWTClaims struct {
 // Default users for authentication
 var authUsers = map[string]string{
 	"admin": "password123", // Default user - CHANGE IN PRODUCTION
+	"local": "localpass",   // Local user for testing
 }
 
 // HandleLogin authenticates a user and returns a JWT token
