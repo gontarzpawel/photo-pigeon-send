@@ -89,8 +89,8 @@ func HandleLogin(c *gin.Context) {
 
 	// Identify the user in Heap
 	if config.HeapEnabled {
-		userID := c.GetHeader("X-HEAP-USER-ID")
-		if userID != "" {
+		userID := c.GetHeader("x-heap-user-id")
+		if userID == "" {
 			return
 		}
 

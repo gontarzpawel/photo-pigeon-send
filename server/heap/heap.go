@@ -52,7 +52,7 @@ func IdentifyUser(identity string, userID string) error {
 
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
-	//req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", config.HeapAPIKey))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", config.HeapAPIKey))
 
 	// Send the request
 	client := &http.Client{Timeout: 10 * time.Second}
