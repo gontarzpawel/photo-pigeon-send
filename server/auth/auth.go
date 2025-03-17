@@ -10,6 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"image-upload-server/config"
+	"image-upload-server/heap"
 )
 
 // User represents the user model
@@ -83,6 +84,23 @@ func HandleLogin(c *gin.Context) {
 	}
 	response.Identity.Username = user.Username
 	response.Identity.Role = role
+
+	// Identify the user in Heap
+	if config.HeapEnabled {
+		properties := heap.Properties{
+			"role":      role,
+			"loginTime": time.Now().Format(time.RFC3339),
+		}
+		
+		go func() {
+			if err := heap.IdentifyUser(user.Username, properties); err != nil {
+				// Just log the error, don't fail the login
+				fmt.Printf("Failed to identify user in Heap: %v\n", err)
+			} else {
+				fmt.Printf("User %s identified in Heap with role %s\n", user.Username, role)
+			}
+		}()
+	}
 
 	c.JSON(http.StatusOK, response)
 }

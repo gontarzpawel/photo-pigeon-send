@@ -8,6 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	
 	"image-upload-server/auth"
+	"image-upload-server/config"
+	"image-upload-server/heap"
 )
 
 // AuthMiddleware returns a middleware for authenticating JWT tokens
@@ -41,9 +43,23 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Set("username", claims.Username)
 		c.Set("role", claims.Role)
 
-		// Set heap identity headers
+		// Set heap identity headers for client-side tracking
 		c.Header("X-Heap-Identity", claims.Username)
 		c.Header("X-Heap-Properties", `{"role":"`+claims.Role+`"}`)
+
+		// Optionally track API access with Heap server-side
+		if config.HeapEnabled {
+			go func() {
+				properties := heap.Properties{
+					"endpoint": c.Request.URL.Path,
+					"method":   c.Request.Method,
+					"role":     claims.Role,
+				}
+				
+				// Don't block the request if Heap tracking fails
+				_ = heap.IdentifyUser(claims.Username, properties)
+			}()
+		}
 
 		c.Next()
 	}
