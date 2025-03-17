@@ -1,4 +1,3 @@
-
 package auth
 
 import (
@@ -41,13 +40,15 @@ var authUsers = map[string]string{
 	"admin": "password123", // Default user - CHANGE IN PRODUCTION
 	"local": "localpass",   // Local user for testing
 	"bob":   "bobpass",     // New user - Bob
+	"john":  "johnpass",    // New user - John
 }
 
 // User roles mapping
 var userRoles = map[string]string{
-	"admin": "admin",   // Admin role
-	"local": "write",   // Write permissions
-	"bob":   "default", // Default permissions
+	"admin": "admin",    // Admin role
+	"local": "write",    // Write permissions
+	"bob":   "default",  // Default permissions
+	"john":  "readonly", // Read only permissions
 }
 
 // HandleLogin authenticates a user and returns a JWT token
@@ -84,16 +85,17 @@ func HandleLogin(c *gin.Context) {
 	}
 	response.Identity.Username = user.Username
 	response.Identity.Role = role
+	c.JSON(http.StatusOK, response)
 
 	// Identify the user in Heap
 	if config.HeapEnabled {
-		properties := heap.Properties{
-			"role":      role,
-			"loginTime": time.Now().Format(time.RFC3339),
+		userID := c.GetHeader("X-HEAP-USER-ID")
+		if userID != "" {
+			return
 		}
-		
+
 		go func() {
-			if err := heap.IdentifyUser(user.Username, properties); err != nil {
+			if err := heap.IdentifyUser(user.Username, userID); err != nil {
 				// Just log the error, don't fail the login
 				fmt.Printf("Failed to identify user in Heap: %v\n", err)
 			} else {
@@ -102,7 +104,6 @@ func HandleLogin(c *gin.Context) {
 		}()
 	}
 
-	c.JSON(http.StatusOK, response)
 }
 
 // GenerateJWT creates a new JWT token for the given username

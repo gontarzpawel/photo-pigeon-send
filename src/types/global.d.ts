@@ -3,6 +3,7 @@ interface HeapAnalytics {
   identify: (identifier: string) => void;
   addUserProperties: (properties: Record<string, any>) => void;
   track: (eventName: string, properties?: Record<string, any>) => void;
+  getUserId: () => string;
   // Add other Heap methods as needed
 }
 

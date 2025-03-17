@@ -29,14 +29,14 @@ class AuthService {
       // Construct the full login URL
       const loginUrl = this.buildApiUrl(serverUrl, apiPath);
       
-      const response = await fetch(loginUrl, {
+     const response = await fetch(loginUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-HEAP-USER-ID': window.heap && typeof window.heap.getUserId === 'function' ? window.heap.getUserId() : '',
         },
         body: JSON.stringify({ username, password }),
       });
-      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Login failed');

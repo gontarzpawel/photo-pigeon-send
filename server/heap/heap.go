@@ -1,10 +1,10 @@
-
 package heap
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	heapIdentifyURL = "https://heapanalytics.com/api/identify"
+	heapIdentifyURL = "https://heapanalytics.com/api/v1/identify"
 )
 
 // Properties represents user properties sent to Heap
@@ -20,14 +20,13 @@ type Properties map[string]interface{}
 
 // IdentifyRequest represents the request body to identify a user in Heap
 type IdentifyRequest struct {
-	AppID      string     `json:"app_id"`
-	Identity   string     `json:"identity"`
-	Properties Properties `json:"properties,omitempty"`
-	Timestamp  int64      `json:"timestamp,omitempty"`
+	AppID    string `json:"app_id"`
+	Identity string `json:"identity"`
+	UserID   string `json:"user_id"`
 }
 
 // IdentifyUser identifies a user in Heap Analytics via server-side API
-func IdentifyUser(identity string, properties Properties) error {
+func IdentifyUser(identity string, userID string) error {
 	// Skip if Heap is not configured
 	if !config.HeapEnabled {
 		return fmt.Errorf("Heap analytics is not configured")
@@ -35,10 +34,9 @@ func IdentifyUser(identity string, properties Properties) error {
 
 	// Create the request body
 	request := IdentifyRequest{
-		AppID:      config.HeapAppID,
-		Identity:   identity,
-		Properties: properties,
-		Timestamp:  time.Now().Unix() * 1000, // Heap expects milliseconds
+		AppID:    config.HeapAppID,
+		Identity: fmt.Sprintf("%s-server-side", identity),
+		UserID:   userID,
 	}
 
 	jsonData, err := json.Marshal(request)
@@ -54,7 +52,7 @@ func IdentifyUser(identity string, properties Properties) error {
 
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", config.HeapAPIKey))
+	//req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", config.HeapAPIKey))
 
 	// Send the request
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -66,7 +64,12 @@ func IdentifyUser(identity string, properties Properties) error {
 
 	// Check response
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("heap API returned error status: %d", resp.StatusCode)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("heap API response body error: %d", err)
+		}
+
+		return fmt.Errorf("heap API returned error status: %d , body: %s", resp.StatusCode, string(body))
 	}
 
 	return nil
