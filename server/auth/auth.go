@@ -1,3 +1,4 @@
+
 package auth
 
 import (
@@ -20,11 +21,17 @@ type User struct {
 // LoginResponse represents the response after successful login
 type LoginResponse struct {
 	Token string `json:"token"`
+	// Add user identity info for client-side Heap tracking
+	Identity struct {
+		Username string `json:"username"`
+		Role     string `json:"role"`
+	} `json:"identity"`
 }
 
 // JWTClaims represents the claims in the JWT token
 type JWTClaims struct {
 	Username string `json:"username"`
+	Role     string `json:"role"` // Added role for permissions
 	jwt.RegisteredClaims
 }
 
@@ -32,6 +39,14 @@ type JWTClaims struct {
 var authUsers = map[string]string{
 	"admin": "password123", // Default user - CHANGE IN PRODUCTION
 	"local": "localpass",   // Local user for testing
+	"bob":   "bobpass",     // New user - Bob
+}
+
+// User roles mapping
+var userRoles = map[string]string{
+	"admin": "admin",   // Admin role
+	"local": "write",   // Write permissions
+	"bob":   "default", // Default permissions
 }
 
 // HandleLogin authenticates a user and returns a JWT token
@@ -49,24 +64,38 @@ func HandleLogin(c *gin.Context) {
 		return
 	}
 
+	// Get user role
+	role := userRoles[user.Username]
+	if role == "" {
+		role = "default" // Default role if not specified
+	}
+
 	// Create token
-	token, err := GenerateJWT(user.Username)
+	token, err := GenerateJWT(user.Username, role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
 		return
 	}
 
-	c.JSON(http.StatusOK, LoginResponse{Token: token})
+	// Create response with token and identity info for Heap
+	response := LoginResponse{
+		Token: token,
+	}
+	response.Identity.Username = user.Username
+	response.Identity.Role = role
+
+	c.JSON(http.StatusOK, response)
 }
 
 // GenerateJWT creates a new JWT token for the given username
-func GenerateJWT(username string) (string, error) {
+func GenerateJWT(username, role string) (string, error) {
 	// Set expiration time for the token
 	expirationTime := time.Now().Add(24 * time.Hour)
 
 	// Create claims with user data
 	claims := &JWTClaims{
 		Username: username,
+		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

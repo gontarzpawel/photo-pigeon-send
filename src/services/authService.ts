@@ -3,10 +3,15 @@ import { toast } from "sonner";
 
 interface LoginResponse {
   token: string;
+  identity?: {
+    username: string;
+    role: string;
+  };
 }
 
 export interface User {
   username: string;
+  role?: string;
 }
 
 class AuthService {
@@ -41,7 +46,25 @@ class AuthService {
       
       // Store the token and user info
       localStorage.setItem(this.tokenKey, data.token);
-      localStorage.setItem(this.userKey, JSON.stringify({ username }));
+      
+      // Store enhanced user info if available
+      const userInfo: User = { 
+        username,
+        role: data.identity?.role
+      };
+      localStorage.setItem(this.userKey, JSON.stringify(userInfo));
+      
+      // Identify user in Heap Analytics if available
+      if (window.heap && typeof window.heap.identify === 'function') {
+        window.heap.identify(username);
+        console.log('User identified in Heap Analytics:', username);
+        
+        // Add user properties
+        if (typeof window.heap.addUserProperties === 'function' && data.identity?.role) {
+          window.heap.addUserProperties({ 'role': data.identity.role });
+          console.log('User role added to Heap Analytics:', data.identity.role);
+        }
+      }
       
       return true;
     } catch (error) {

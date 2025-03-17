@@ -39,6 +39,11 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		// Add claims to the context for other handlers to use
 		c.Set("username", claims.Username)
+		c.Set("role", claims.Role)
+
+		// Set heap identity headers
+		c.Header("X-Heap-Identity", claims.Username)
+		c.Header("X-Heap-Properties", `{"role":"`+claims.Role+`"}`)
 
 		c.Next()
 	}
