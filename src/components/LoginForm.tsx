@@ -75,25 +75,25 @@ const LoginForm = ({
       
       if (success) {
         // Identify the user with Heap Analytics
-        if (window.heap && typeof window.heap.identify === 'function') {
-          window.heap.identify(username);
-          console.log('User identified in Heap Analytics:', username);
-          
-          // Add user properties with role based on username
-          if (typeof window.heap.addUserProperties === 'function') {
-            let role = 'default';
-            
-            // Determine role based on username
-            if (username === 'admin') {
-              role = 'power';
-            } else if (username.toLowerCase().includes('local')) {
-              role = 'write';
-            }
-            
-            window.heap.addUserProperties({ 'role': role });
-            console.log('User role added to Heap Analytics:', role);
-          }
-        }
+        // if (window.heap && typeof window.heap.identify === 'function') {
+        //   window.heap.identify(username);
+        //   console.log('User identified in Heap Analytics:', username);
+        //
+        //   // Add user properties with role based on username
+        //   if (typeof window.heap.addUserProperties === 'function') {
+        //     let role = 'default';
+        //
+        //     // Determine role based on username
+        //     if (username === 'admin') {
+        //       role = 'power';
+        //     } else if (username.toLowerCase().includes('local')) {
+        //       role = 'write';
+        //     }
+        //
+        //     window.heap.addUserProperties({ 'role': role });
+        //     console.log('User role added to Heap Analytics:', role);
+        //   }
+        // }
         
         toast.success("Login successful");
         onLoginSuccess();

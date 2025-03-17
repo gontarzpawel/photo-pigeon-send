@@ -55,16 +55,16 @@ class AuthService {
       localStorage.setItem(this.userKey, JSON.stringify(userInfo));
       
       // Identify user in Heap Analytics if available
-      if (window.heap && typeof window.heap.identify === 'function') {
-        window.heap.identify(username);
-        console.log('User identified in Heap Analytics:', username);
-        
-        // Add user properties
-        if (typeof window.heap.addUserProperties === 'function' && data.identity?.role) {
-          window.heap.addUserProperties({ 'role': data.identity.role });
-          console.log('User role added to Heap Analytics:', data.identity.role);
-        }
-      }
+      // if (window.heap && typeof window.heap.identify === 'function') {
+      //   window.heap.identify(username);
+      //   console.log('User identified in Heap Analytics:', username);
+      //
+      //   // Add user properties
+      //   if (typeof window.heap.addUserProperties === 'function' && data.identity?.role) {
+      //     window.heap.addUserProperties({ 'role': data.identity.role });
+      //     console.log('User role added to Heap Analytics:', data.identity.role);
+      //   }
+      // }
       
       return true;
     } catch (error) {
