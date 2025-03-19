@@ -7,7 +7,12 @@ interface HeapAnalytics {
   // Add other Heap methods as needed
 }
 
+interface HotjarAnalytics {
+    identify: (identifier: string, properties: Record<string, any>) => void;
+}
+
 interface Window {
   heap?: HeapAnalytics;
+  hj?: HotjarAnalytics;
   heapReadyCb?: Array<{ name: string, fn: () => void }>;
 }
