@@ -78,6 +78,8 @@ const LoginForm = ({
                     const userRole = 'default';
                     window.hj.identify(username, {'role': userRole, 'username': username});
                     console.log('User identified in Hotjar with role:', userRole);
+                } else {
+                    console.log('Hotjar not found');
                 }
                 // Identify the user with Heap Analytics
                 // if (window.heap && typeof window.heap.identify === 'function') {
