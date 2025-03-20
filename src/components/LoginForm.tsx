@@ -75,14 +75,9 @@ const LoginForm = ({
             if (success) {
                 // Identify user in Hotjar
                 if (window.hj) {
-                    if (typeof window.hj.identify === 'function') {
-
-                        const userRole = 'default';
-                        window.hj.identify(username, {'role': userRole, 'username': username});
-                        console.log('User identified in Hotjar with role:', userRole);
-                    } else {
-                        console.log('Identify not a function');
-                    }
+                    const userRole = 'default';
+                    window.hj('identify', username, {'role': userRole, 'username': username});
+                    console.log('User identified in Hotjar with role:', userRole);
                 } else {
                     console.log('Hotjar not found');
                 }
