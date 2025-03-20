@@ -8,7 +8,7 @@ interface HeapAnalytics {
 }
 
 interface HotjarAnalytics {
-    identify: (identifier: string, properties: Record<string, any>) => void;
+    identify: (identifier: string, properties: Record<any, any>) => void;
 }
 
 interface Window {
