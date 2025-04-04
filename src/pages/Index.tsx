@@ -11,6 +11,8 @@ import { photoQueue } from "@/services/photoService";
 import { authService } from "@/services/authService";
 import LoginForm from "@/components/LoginForm";
 import { toast } from "sonner";
+import Cart from "@/components/Cart";
+import HostingPlans from "@/components/HostingPlans";
 
 // Function to validate URL
 const isValidUrl = (string: string): boolean => {
@@ -133,21 +135,23 @@ const Index = () => {
   };
 
   return (
-    <div className="container max-w-md mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       {!isAuthenticated ? (
         // Login form when not authenticated
-        <LoginForm 
-          serverUrl={serverUrl}
-          onServerUrlChange={setServerUrl}
-          onLoginSuccess={handleLoginSuccess}
-        />
+        <div className="max-w-md mx-auto">
+          <LoginForm 
+            serverUrl={serverUrl}
+            onServerUrlChange={setServerUrl}
+            onLoginSuccess={handleLoginSuccess}
+          />
+        </div>
       ) : (
         // Content when authenticated
-        <Card className="w-full">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Photo Pigeon</CardTitle>
-            <CardDescription>Send photos to your server</CardDescription>
-            <div className="flex justify-end mt-2">
+        <>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold">Photo Pigeon</h1>
+            <div className="flex items-center gap-3">
+              <Cart />
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -156,42 +160,57 @@ const Index = () => {
                 Logout
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4">
-              <Label htmlFor="server-url">Server URL</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="server-url"
-                  placeholder="https://your-server.com/api"
-                  value={serverUrl}
-                  onChange={(e) => setServerUrl(e.target.value)}
-                  className={`mb-1 ${urlError ? 'border-red-500' : ''}`}
-                />
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleSaveServerUrl}
-                  disabled={!!urlError || !serverUrl}
-                >
-                  Save
-                </Button>
-              </div>
-              {urlError && (
-                <p className="text-xs text-red-500 mt-1">{urlError}</p>
-              )}
-            </div>
+          </div>
+          
+          <div className="grid md:grid-cols-[300px_1fr] gap-6">
+            <Card className="h-fit">
+              <CardHeader>
+                <CardTitle>Server Settings</CardTitle>
+                <CardDescription>Configure your photo upload server</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4">
+                  <Label htmlFor="server-url">Server URL</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="server-url"
+                      placeholder="https://your-server.com/api"
+                      value={serverUrl}
+                      onChange={(e) => setServerUrl(e.target.value)}
+                      className={`mb-1 ${urlError ? 'border-red-500' : ''}`}
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleSaveServerUrl}
+                      disabled={!!urlError || !serverUrl}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                  {urlError && (
+                    <p className="text-xs text-red-500 mt-1">{urlError}</p>
+                  )}
+                </div>
 
-            <GalleryPicker 
-              serverUrl={serverUrl} 
-              onPhotosSelected={handleGalleryPhotosSelected} 
-            />
-          </CardContent>
-        </Card>
+                <GalleryPicker 
+                  serverUrl={serverUrl} 
+                  onPhotosSelected={handleGalleryPhotosSelected} 
+                />
+              </CardContent>
+            </Card>
+            
+            <div>
+              <HostingPlans />
+            </div>
+          </div>
+          
+          {/* Add the upload queue component (always visible) */}
+          <div className="mt-6">
+            <UploadQueue />
+          </div>
+        </>
       )}
-      
-      {/* Add the upload queue component (always visible) */}
-      <UploadQueue />
     </div>
   );
 };
