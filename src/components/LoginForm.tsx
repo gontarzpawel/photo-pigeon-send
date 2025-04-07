@@ -1,3 +1,4 @@
+
 import {useState} from "react";
 import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} from "@/components/ui/card";
 import {Input} from "@/components/ui/input";
@@ -73,35 +74,15 @@ const LoginForm = ({
             const success = await authService.login(username, password, serverUrl, loginApiPath);
 
             if (success) {
-                // Identify user in Hotjar
-                if (window.hj) {
+                // Identify user in Hotjar - Fixed the error by using a type check
+                if (typeof window.hj === 'function') {
                     const userRole = 'default';
                     window.hj('identify', username, {'role': userRole, 'username': username});
                     console.log('User identified in Hotjar with role:', userRole);
                 } else {
-                    console.log('Hotjar not found');
+                    console.log('Hotjar not found or not a function');
                 }
-                // Identify the user with Heap Analytics
-                // if (window.heap && typeof window.heap.identify === 'function') {
-                //   window.heap.identify(username);
-                //   console.log('User identified in Heap Analytics:', username);
-                //
-                //   // Add user properties with role based on username
-                //   if (typeof window.heap.addUserProperties === 'function') {
-                //     let role = 'default';
-                //
-                //     // Determine role based on username
-                //     if (username === 'admin') {
-                //       role = 'power';
-                //     } else if (username.toLowerCase().includes('local')) {
-                //       role = 'write';
-                //     }
-                //
-                //     window.heap.addUserProperties({ 'role': role });
-                //     console.log('User role added to Heap Analytics:', role);
-                //   }
-                // }
-
+                
                 toast.success("Login successful");
                 onLoginSuccess();
             }

@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import UploadDashboard from "./pages/UploadDashboard";
+import HostingPlans from "./pages/HostingPlans";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -17,6 +19,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/dashboard" element={<UploadDashboard />} />
+          <Route path="/hosting" element={<HostingPlans />} />
           <Route path="/payment-success" element={<Index />} />  {/* Placeholder for future checkout success page */}
           <Route path="/payment-canceled" element={<Index />} />  {/* Placeholder for future checkout canceled page */}
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

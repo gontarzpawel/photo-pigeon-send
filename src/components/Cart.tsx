@@ -4,11 +4,14 @@ import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cartService, CartItem } from '@/services/cartService';
+import { toast } from 'sonner';
+import { authService } from '@/services/authService';
 
 export function Cart() {
   const [isOpen, setIsOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [totalItems, setTotalItems] = useState(0);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   useEffect(() => {
     // Initialize cart
@@ -36,10 +39,62 @@ export function Cart() {
     cartService.removeItem(itemId);
   };
 
-  const handleCheckout = () => {
-    // In a real app, this would redirect to checkout
-    alert('Proceeding to checkout...');
-    setIsOpen(false);
+  const handleCheckout = async () => {
+    try {
+      setIsCheckingOut(true);
+      
+      // Check if user is logged in
+      const isAuthenticated = authService.isLoggedIn();
+      if (!isAuthenticated) {
+        toast.error("Please login to continue with checkout");
+        setIsOpen(false);
+        return;
+      }
+      
+      // Get server URL and token
+      const serverUrl = authService.getBaseUrl();
+      const token = authService.getToken();
+      
+      if (!serverUrl) {
+        toast.error("Server URL not configured");
+        setIsCheckingOut(false);
+        return;
+      }
+      
+      // Call API to create checkout session
+      const response = await fetch(`${serverUrl}/checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          items: cartItems.map(item => ({
+            id: item.id,
+            quantity: item.quantity
+          }))
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create checkout session');
+      }
+      
+      const { url } = await response.json();
+      
+      if (url) {
+        // Redirect to Stripe checkout
+        window.location.href = url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+      
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast.error(error instanceof Error ? error.message : 'Checkout failed');
+      setIsCheckingOut(false);
+    }
   };
 
   const formatPrice = (price: number) => {
@@ -125,8 +180,11 @@ export function Cart() {
               <Button variant="outline" onClick={() => cartService.clearCart()}>
                 Clear Cart
               </Button>
-              <Button onClick={handleCheckout}>
-                Checkout
+              <Button 
+                onClick={handleCheckout}
+                disabled={isCheckingOut}
+              >
+                {isCheckingOut ? "Processing..." : "Checkout"}
               </Button>
             </div>
           </div>
