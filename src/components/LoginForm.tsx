@@ -12,14 +12,18 @@ interface LoginFormProps {
     onServerUrlChange: (url: string) => void;
     loginApiPath?: string;
     onLoginSuccess: () => void;
+    showRegisterLink?: boolean;
+    onRegisterClick?: () => void;
 }
 
 const LoginForm = ({
-                       serverUrl,
-                       onServerUrlChange,
-                       loginApiPath = "login",
-                       onLoginSuccess
-                   }: LoginFormProps) => {
+    serverUrl,
+    onServerUrlChange,
+    loginApiPath = "login",
+    onLoginSuccess,
+    showRegisterLink = false,
+    onRegisterClick
+}: LoginFormProps) => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -74,13 +78,12 @@ const LoginForm = ({
             const success = await authService.login(username, password, serverUrl, loginApiPath);
 
             if (success) {
-                // Identify user in Hotjar if it exists and is a function
+                // Identify user in Hotjar if it exists
                 if (window.hj && typeof window.hj === 'function') {
-                    const userRole = 'default';
+                    const userInfo = authService.getCurrentUser();
+                    const userRole = userInfo?.role || 'default';
                     window.hj('identify', username, {'role': userRole, 'username': username});
                     console.log('User identified in Hotjar with role:', userRole);
-                } else {
-                    console.log('Hotjar not found or not a function');
                 }
                 
                 toast.success("Login successful");
@@ -139,7 +142,7 @@ const LoginForm = ({
                         />
                     </div>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex flex-col space-y-4">
                     <Button
                         type="submit"
                         className="w-full"
@@ -147,6 +150,21 @@ const LoginForm = ({
                     >
                         {isLoading ? "Logging in..." : "Login"}
                     </Button>
+                    
+                    {showRegisterLink && (
+                        <div className="w-full text-center">
+                            <span className="text-sm text-muted-foreground">
+                                Don't have an account? {" "}
+                                <Button 
+                                    variant="link" 
+                                    className="p-0 h-auto" 
+                                    onClick={onRegisterClick}
+                                >
+                                    Register
+                                </Button>
+                            </span>
+                        </div>
+                    )}
                 </CardFooter>
             </form>
         </Card>

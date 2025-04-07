@@ -32,6 +32,11 @@ const Index = () => {
     navigate('/dashboard');
   };
 
+  // Navigate to registration page
+  const handleRegisterClick = () => {
+    navigate('/register');
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col items-center">
@@ -41,6 +46,8 @@ const Index = () => {
             serverUrl={serverUrl}
             onServerUrlChange={setServerUrl}
             onLoginSuccess={handleLoginSuccess}
+            showRegisterLink={true}
+            onRegisterClick={handleRegisterClick}
           />
         </div>
         <div className="mt-8 text-center">

@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -18,6 +19,7 @@ import (
 	"image-upload-server/filehandler"
 	"image-upload-server/middleware"
 	"image-upload-server/subscription"
+	"image-upload-server/user"
 )
 
 func main() {
@@ -28,6 +30,17 @@ func main() {
 	uploadsDir := config.UploadsDirOverriden
 	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
 		log.Fatalf("Failed to create uploads directory: %v", err)
+	}
+
+	// Ensure data directory exists for user database
+	dataDir := config.DataDirOverriden
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		log.Fatalf("Failed to create data directory: %v", err)
+	}
+
+	// Initialize user database
+	if err := user.InitUserDatabase(dataDir); err != nil {
+		log.Fatalf("Failed to initialize user database: %v", err)
 	}
 
 	// Load existing file hashes
@@ -47,7 +60,8 @@ func main() {
 	}))
 
 	// Public routes
-	router.POST("/login", auth.HandleLogin)
+	router.POST("/login", user.HandleLogin)
+	router.POST("/register", user.HandleRegister)
 
 	// Protected routes
 	authorized := router.Group("/")

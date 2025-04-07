@@ -9,9 +9,15 @@ interface LoginResponse {
   };
 }
 
+interface RegisterResponse {
+  success: boolean;
+  message: string;
+}
+
 export interface User {
   username: string;
   role?: string;
+  email?: string;
 }
 
 class AuthService {
@@ -54,22 +60,46 @@ class AuthService {
       };
       localStorage.setItem(this.userKey, JSON.stringify(userInfo));
       
-      // Identify user in Heap Analytics if available
-      // if (window.heap && typeof window.heap.identify === 'function') {
-      //   window.heap.identify(username);
-      //   console.log('User identified in Heap Analytics:', username);
-      //
-      //   // Add user properties
-      //   if (typeof window.heap.addUserProperties === 'function' && data.identity?.role) {
-      //     window.heap.addUserProperties({ 'role': data.identity.role });
-      //     console.log('User role added to Heap Analytics:', data.identity.role);
-      //   }
-      // }
-      
       return true;
     } catch (error) {
       console.error('Login error:', error);
       toast.error(error instanceof Error ? error.message : 'Login failed');
+      return false;
+    }
+  }
+
+  // Register a new user
+  async register(username: string, password: string, email: string, serverUrl: string, apiPath: string = "register"): Promise<boolean> {
+    try {
+      // Store the base URL for future use
+      this.saveBaseUrl(serverUrl);
+      
+      // Construct the full registration URL
+      const registerUrl = this.buildApiUrl(serverUrl, apiPath);
+      
+      const response = await fetch(registerUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password, email }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Registration failed');
+      }
+      
+      const data: RegisterResponse = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Registration failed');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast.error(error instanceof Error ? error.message : 'Registration failed');
       return false;
     }
   }
