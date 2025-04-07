@@ -1,133 +1,76 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
-	"net/http"
+	"image-upload-server/config"
+	"log"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-
-	"image-upload-server/config"
-	"image-upload-server/heap"
 )
 
-// User represents the user model
-type User struct {
+// Claims represents the JWT claims
+type Claims struct {
 	Username string `json:"username"`
-	Password string `json:"password"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+	jwt.StandardClaims
 }
 
-// LoginResponse represents the response after successful login
-type LoginResponse struct {
-	Token string `json:"token"`
-	// Add user identity info for client-side Heap tracking
-	Identity struct {
-		Username string `json:"username"`
-		Role     string `json:"role"`
-	} `json:"identity"`
-}
-
-// JWTClaims represents the claims in the JWT token
-type JWTClaims struct {
-	Username string `json:"username"`
-	Role     string `json:"role"` // Added role for permissions
-	jwt.RegisteredClaims
-}
-
-// Default users for authentication
-var authUsers = map[string]string{
-	"admin": "password123", // Default user - CHANGE IN PRODUCTION
-	"local": "localpass",   // Local user for testing
-	"bob":   "bobpass",     // New user - Bob
-	"john":  "johnpass",    // New user - John
-}
-
-// User roles mapping
-var userRoles = map[string]string{
-	"admin": "admin",    // Admin role
-	"local": "write",    // Write permissions
-	"bob":   "default",  // Default permissions
-	"john":  "readonly", // Read only permissions
-}
-
-// HandleLogin authenticates a user and returns a JWT token
+// HandleLogin handles user authentication
 func HandleLogin(c *gin.Context) {
-	var user User
-	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+	var loginRequest struct {
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+
+	if err := c.BindJSON(&loginRequest); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request format"})
 		return
 	}
 
-	// Check if user exists and password is correct
-	storedPassword, exists := authUsers[user.Username]
-	if !exists || storedPassword != user.Password {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+	// In a real application, you would validate the username and password against a database.
+	// For this example, we'll just check if the username and password are not empty.
+	if loginRequest.Username == "" || loginRequest.Password == "" {
+		c.JSON(401, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	// Get user role
-	role := userRoles[user.Username]
-	if role == "" {
-		role = "default" // Default role if not specified
-	}
-
-	// Create token
-	token, err := GenerateJWT(user.Username, role)
+	// Generate a token for the user
+	token, err := GenerateToken(loginRequest.Username)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
+		c.JSON(500, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
-	// Create response with token and identity info for Heap
-	response := LoginResponse{
-		Token: token,
-	}
-	response.Identity.Username = user.Username
-	response.Identity.Role = role
-	c.JSON(http.StatusOK, response)
-
-	// Identify the user in Heap
-	if config.HeapEnabled {
-		userID := c.GetHeader("x-heap-user-id")
-		if userID == "" {
-			return
-		}
-
-		go func() {
-			if err := heap.IdentifyUser(user.Username, userID); err != nil {
-				// Just log the error, don't fail the login
-				fmt.Printf("Failed to identify user in Heap: %v\n", err)
-			} else {
-				fmt.Printf("User %s identified in Heap with role %s\n", user.Username, role)
-			}
-		}()
-	}
-
+	// Return the token to the client
+	c.JSON(200, gin.H{"token": token, "identity": gin.H{"username": loginRequest.Username, "role": "default"}})
 }
 
-// GenerateJWT creates a new JWT token for the given username
-func GenerateJWT(username, role string) (string, error) {
-	// Set expiration time for the token
-	expirationTime := time.Now().Add(24 * time.Hour)
+// GenerateToken creates a new JWT token for the given user
+func GenerateToken(username string) (string, error) {
+	// Set the expiration time for the token
+	expirationTime := time.Now().Add(12 * time.Hour)
 
-	// Create claims with user data
-	claims := &JWTClaims{
+	// Create the JWT claims
+	claims := &Claims{
 		Username: username,
-		Role:     role,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
+		Email:    fmt.Sprintf("%s@example.com", username), // Mock email
+		Role:     "default",                               // Mock role
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expirationTime.Unix(),
+			IssuedAt:  time.Now().Unix(),
+			Issuer:    "image-upload-server",
 		},
 	}
 
-	// Create token with claims
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
 	// Sign the token with the secret key
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(config.JWTSecret))
 	if err != nil {
+		log.Printf("Failed to sign token: %v", err)
 		return "", err
 	}
 
@@ -135,24 +78,45 @@ func GenerateJWT(username, role string) (string, error) {
 }
 
 // ParseToken parses and validates a JWT token
-func ParseToken(tokenString string) (*JWTClaims, error) {
-	// Parse and validate the token
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		// Validate signing method
+func ParseToken(tokenString string) (*Claims, error) {
+	claims := &Claims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		// Validate the signing method
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
+
+		// Return the secret key for signing
 		return []byte(config.JWTSecret), nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
 
-	// Check if the token is valid
-	if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
-		return claims, nil
+	if !token.Valid {
+		return nil, errors.New("invalid token")
 	}
 
-	return nil, fmt.Errorf("invalid token")
+	return claims, nil
+}
+
+// GetUserClaimsFromContext extracts user claims from the Gin context
+func GetUserClaimsFromContext(c *gin.Context) (*Claims, error) {
+	// Get the Authorization header
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		return nil, errors.New("authorization header is missing")
+	}
+	
+	// Extract token from the header
+	tokenString := authHeader[7:] // Remove "Bearer " prefix
+	
+	// Parse and validate the token
+	claims, err := ParseToken(tokenString)
+	if err != nil {
+		return nil, err
+	}
+	
+	return claims, nil
 }

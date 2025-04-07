@@ -8,6 +8,8 @@ import Index from "./pages/Index";
 import UploadDashboard from "./pages/UploadDashboard";
 import HostingPlans from "./pages/HostingPlans";
 import NotFound from "./pages/NotFound";
+import SubscriptionSuccess from "./pages/SubscriptionSuccess";
+import SubscriptionCanceled from "./pages/SubscriptionCanceled";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +23,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<UploadDashboard />} />
           <Route path="/hosting" element={<HostingPlans />} />
+          <Route path="/subscription-success" element={<SubscriptionSuccess />} />
+          <Route path="/subscription-canceled" element={<SubscriptionCanceled />} />
           <Route path="/payment-success" element={<Index />} />  {/* Placeholder for future checkout success page */}
           <Route path="/payment-canceled" element={<Index />} />  {/* Placeholder for future checkout canceled page */}
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -74,8 +74,8 @@ const LoginForm = ({
             const success = await authService.login(username, password, serverUrl, loginApiPath);
 
             if (success) {
-                // Identify user in Hotjar - Fixed the error by using a type check
-                if (typeof window.hj === 'function') {
+                // Identify user in Hotjar if it exists and is a function
+                if (window.hj && typeof window.hj === 'function') {
                     const userRole = 'default';
                     window.hj('identify', username, {'role': userRole, 'username': username});
                     console.log('User identified in Hotjar with role:', userRole);

@@ -17,6 +17,7 @@ import (
 	"image-upload-server/config"
 	"image-upload-server/filehandler"
 	"image-upload-server/middleware"
+	"image-upload-server/subscription"
 )
 
 func main() {
@@ -53,6 +54,7 @@ func main() {
 	authorized.Use(middleware.AuthMiddleware())
 	{
 		authorized.POST("/upload", filehandler.HandleUpload(uploadsDir))
+		authorized.POST("/subscribe", subscription.HandleSubscriptionCheckout)
 	}
 
 	// Start the server
@@ -61,33 +63,6 @@ func main() {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
-
-//package main
-//
-//import (
-//"crypto/md5"
-//"encoding/hex"
-//"fmt"
-//"io"
-//"os"
-//"path/filepath"
-//)
-
-//func main() {
-//	uploadsDir := "./uploads"
-//	duplicates := findDuplicateImages(uploadsDir)
-//	if len(duplicates) > 0 {
-//		fmt.Println("Duplicate images found:")
-//		for _, dup := range duplicates {
-//			fmt.Printf("Hash: %s\n", dup.hash)
-//			for _, path := range dup.paths {
-//				fmt.Printf(" - %s\n", path)
-//			}
-//		}
-//	} else {
-//		fmt.Println("No duplicate images found.")
-//	}
-//}
 
 type duplicate struct {
 	hash  string
