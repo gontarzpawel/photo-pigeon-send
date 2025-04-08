@@ -87,12 +87,19 @@ const RegistrationForm = ({
     setIsLoading(true);
 
     try {
+      // Add debug logging to track the process
+      console.log(`Attempting to register user at ${serverUrl}/register`);
+      
       const success = await authService.register(username, password, email, serverUrl, registerApiPath);
+      console.log("Registration result:", success);
 
       if (success) {
         toast.success("Registration successful");
         onRegistrationSuccess();
       }
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast.error("Registration failed. Please try again.");
     } finally {
       setIsLoading(false);
     }

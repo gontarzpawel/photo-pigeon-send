@@ -35,7 +35,7 @@ class AuthService {
       // Construct the full login URL
       const loginUrl = this.buildApiUrl(serverUrl, apiPath);
       
-     const response = await fetch(loginUrl, {
+      const response = await fetch(loginUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,6 +43,7 @@ class AuthService {
         },
         body: JSON.stringify({ username, password }),
       });
+      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Login failed');
@@ -77,20 +78,46 @@ class AuthService {
       // Construct the full registration URL
       const registerUrl = this.buildApiUrl(serverUrl, apiPath);
       
+      console.log("Register URL:", registerUrl);
+      console.log("Register payload:", { username, email });
+      
       const response = await fetch(registerUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
+        credentials: 'omit', // Don't send cookies to avoid CORS issues
         body: JSON.stringify({ username, password, email }),
       });
       
+      console.log("Registration response status:", response.status);
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Registration failed');
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
+        
+        let errorMessage;
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || 'Registration failed';
+        } catch {
+          errorMessage = `Registration failed with status ${response.status}`;
+        }
+        
+        throw new Error(errorMessage);
       }
       
-      const data: RegisterResponse = await response.json();
+      const responseText = await response.text();
+      console.log("Registration response:", responseText);
+      
+      let data: RegisterResponse;
+      try {
+        data = responseText ? JSON.parse(responseText) : { success: true };
+      } catch (e) {
+        console.error("Failed to parse JSON:", e);
+        throw new Error('Invalid response from server');
+      }
       
       if (!data.success) {
         throw new Error(data.message || 'Registration failed');
