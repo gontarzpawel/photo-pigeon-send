@@ -86,6 +86,17 @@ const LoginForm = ({
                     console.log('User identified in Hotjar with role:', userRole);
                 }
                 
+                // Identify user in LogRocket if it exists
+                if (window.LogRocket && typeof window.LogRocket.identify === 'function') {
+                    const userInfo = authService.getCurrentUser();
+                    window.LogRocket.identify(username, {
+                        name: username,
+                        role: userInfo?.role || 'default',
+                        email: userInfo?.email || ''
+                    });
+                    console.log('User identified in LogRocket');
+                }
+                
                 toast.success("Login successful");
                 onLoginSuccess();
             }
