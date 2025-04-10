@@ -1,4 +1,3 @@
-
 package user
 
 import (
@@ -102,8 +101,6 @@ func (db *UserDatabase) GetUser(username string) (User, bool) {
 
 // SaveToDisk saves the user database to a JSON file
 func (db *UserDatabase) SaveToDisk() error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
 
 	data, err := json.MarshalIndent(db, "", "  ")
 	if err != nil {
