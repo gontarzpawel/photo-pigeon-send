@@ -21,11 +21,11 @@ const NotificationCenter = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [unreadCount, setUnreadCount] = useState(0);
-  const serverUrl = authService.getServerUrl();
+  const serverUrl = authService.getBaseUrl();
 
   // Function to fetch notifications
   const fetchNotifications = async () => {
-    if (!authService.isAuthenticated() || !serverUrl) return;
+    if (!authService.isLoggedIn() || !serverUrl) return;
 
     try {
       setLoading(true);
@@ -51,7 +51,7 @@ const NotificationCenter = () => {
 
   // Update user activity status
   const updateActivity = async () => {
-    if (!authService.isAuthenticated() || !serverUrl) return;
+    if (!authService.isLoggedIn() || !serverUrl) return;
 
     try {
       const token = authService.getToken();
@@ -68,7 +68,7 @@ const NotificationCenter = () => {
 
   // Mark notifications as read
   const markAsRead = async (ids: string[]) => {
-    if (!authService.isAuthenticated() || !serverUrl) return;
+    if (!authService.isLoggedIn() || !serverUrl) return;
 
     try {
       const token = authService.getToken();
@@ -124,13 +124,13 @@ const NotificationCenter = () => {
 
   // Fetch notifications when component mounts and when authentication state changes
   useEffect(() => {
-    if (authService.isAuthenticated()) {
+    if (authService.isLoggedIn()) {
       fetchNotifications();
     } else {
       setNotifications([]);
       setUnreadCount(0);
     }
-  }, [authService.isAuthenticated()]);
+  }, [authService.isLoggedIn()]);
 
   // When opening the popover, mark all as read
   useEffect(() => {
@@ -146,7 +146,7 @@ const NotificationCenter = () => {
   }, [open]);
 
   // Don't show if not authenticated
-  if (!authService.isAuthenticated()) {
+  if (!authService.isLoggedIn()) {
     return null;
   }
 
