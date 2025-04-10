@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -50,7 +51,7 @@ func main() {
 	// Configure CORS
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"POST", "GET", "OPTIONS"},
+		AllowMethods:     []string{"POST", "GET", "OPTIONS", "PUT"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "x-heap-user-id"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
@@ -67,12 +68,30 @@ func main() {
 	{
 		authorized.POST("/upload", filehandler.HandleUpload(uploadsDir))
 		authorized.POST("/subscribe", subscription.HandleSubscriptionCheckout)
+		
+		// Notification routes
+		authorized.GET("/notifications", user.HandleGetNotifications)
+		authorized.PUT("/notifications/read", user.HandleMarkNotificationsRead)
+		authorized.POST("/activity", user.HandleUpdateActivity)
 	}
+
+	// Start the inactivity checker in a background goroutine
+	go startInactivityChecker()
 
 	// Start the server
 	log.Printf("Server running on port%s", config.Port)
 	if err := router.Run(config.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
+	}
+}
+
+// startInactivityChecker runs a periodic check for inactive users
+func startInactivityChecker() {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		user.CheckInactivityNotifications()
 	}
 }
 

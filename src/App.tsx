@@ -11,6 +11,7 @@ import HostingPlans from "./pages/HostingPlans";
 import NotFound from "./pages/NotFound";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 import SubscriptionCanceled from "./pages/SubscriptionCanceled";
+import NotificationCenter from "./components/NotificationCenter";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <div className="fixed top-4 right-4 z-50">
+          <NotificationCenter />
+        </div>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/register" element={<Registration />} />
@@ -27,9 +31,8 @@ const App = () => (
           <Route path="/hosting" element={<HostingPlans />} />
           <Route path="/subscription-success" element={<SubscriptionSuccess />} />
           <Route path="/subscription-canceled" element={<SubscriptionCanceled />} />
-          <Route path="/payment-success" element={<Index />} />  {/* Placeholder for future checkout success page */}
-          <Route path="/payment-canceled" element={<Index />} />  {/* Placeholder for future checkout canceled page */}
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/payment-success" element={<Index />} />
+          <Route path="/payment-canceled" element={<Index />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

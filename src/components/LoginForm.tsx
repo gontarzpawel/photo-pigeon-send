@@ -79,17 +79,17 @@ const LoginForm = ({
 
             if (success) {
                 // Identify user in Hotjar if it exists
-                if (window.hj && typeof window.hj === 'function') {
+                if ((window as any).hj && typeof (window as any).hj === 'function') {
                     const userInfo = authService.getCurrentUser();
                     const userRole = userInfo?.role || 'default';
-                    window.hj('identify', username, {'role': userRole, 'username': username});
+                    (window as any).hj('identify', username, {'role': userRole, 'username': username});
                     console.log('User identified in Hotjar with role:', userRole);
                 }
                 
                 // Identify user in LogRocket if it exists
-                if (window.LogRocket && typeof window.LogRocket.identify === 'function') {
+                if ((window as any).LogRocket && typeof (window as any).LogRocket.identify === 'function') {
                     const userInfo = authService.getCurrentUser();
-                    window.LogRocket.identify(username, {
+                    (window as any).LogRocket.identify(username, {
                         name: username,
                         role: userInfo?.role || 'default',
                         email: userInfo?.email || ''
