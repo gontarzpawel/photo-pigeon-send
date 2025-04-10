@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -14,7 +13,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
-	"image-upload-server/auth"
 	"image-upload-server/config"
 	"image-upload-server/filehandler"
 	"image-upload-server/middleware"

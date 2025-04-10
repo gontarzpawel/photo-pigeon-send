@@ -1,14 +1,12 @@
-
 package subscription
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"image-upload-server/auth"
-	"image-upload-server/config"
 	"log"
 	"net/http"
+
+	"image-upload-server/auth"
 
 	"github.com/gin-gonic/gin"
 )
@@ -41,8 +39,8 @@ type StripeLineItem struct {
 }
 
 var planIdToPriceId = map[string]string{
-	"basic":        "price_basic",       // Replace with actual Stripe price IDs
-	"premium":      "price_premium",     // Replace with actual Stripe price IDs
+	"basic":        "price_basic",        // Replace with actual Stripe price IDs
+	"premium":      "price_premium",      // Replace with actual Stripe price IDs
 	"professional": "price_professional", // Replace with actual Stripe price IDs
 }
 
@@ -109,8 +107,8 @@ func HandleSubscriptionCheckout(c *gin.Context) {
 	// Call Stripe API to create checkout session
 	// This is a placeholder. In a real implementation, you'd use a Stripe library or API call
 	// For demo purposes, we'll just return a mock success response
-	log.Printf("Would send subscription request to Stripe for user %s, plan %s", username, item.ID)
-	
+	log.Printf("Would send subscription request to Stripe for user %s, plan %s, req: %v", username, item.ID, reqBody)
+
 	// Return a mock URL for demo purposes
 	// In production, this would come from the Stripe API response
 	c.JSON(http.StatusOK, gin.H{
